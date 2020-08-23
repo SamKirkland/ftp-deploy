@@ -1,13 +1,17 @@
 {
   "name": "@samkirkland/ftp-deploy",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "description": "Deploy files to a ftp server",
   "main": "dist/index.js",
+  "bin": {
+    "ftp-deploy": "dist/index.js"
+  },
   "scripts": {
     "build": "tsc ",
     "start": "tsc && node ./lib/main.js",
     "deploy": "tsc && node ./lib/main.js --server ftp.samkirkland.com --username \"test@samkirkland.com\" --password \"notARealPassword\"",
+    "deploy2": "tsc && ftp-deploy --server ftp.samkirkland.com --username \"test@samkirkland.com\" --password \"notARealPassword\"",
     "run": "ts-node-dev --respawn -- ./lib/main.js --ftp-server=test",
     "lint": "eslint src/**/*.ts",
     "pack": "ncc build src/main.ts --out dist",
@@ -25,31 +29,30 @@
   "author": "Sam Kirkland",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.2.4",
-    "@types/lodash": "^4.14.158",
-    "@types/promise-ftp": "^1.3.4",
     "basic-ftp": "^4.6.2",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.19",
     "multimatch": "^4.0.0",
     "pretty-bytes": "^5.3.0",
     "pretty-ms": "^7.0.0",
-    "promise-ftp": "^1.3.5",
     "readdir-enhanced": "^6.0.4",
-    "ts-node-dev": "^1.0.0-pre.56",
     "yargs": "^15.4.1"
   },
   "devDependencies": {
     "@types/jest": "^26.0.8",
+    "@types/lodash": "^4.14.159",
     "@types/minimatch": "^3.0.3",
     "@types/node": "^14.0.27",
     "@types/yargs": "^15.0.5",
+    "@typescript-eslint/eslint-plugin": "^3.9.1",
     "@typescript-eslint/parser": "^3.8.0",
     "@vercel/ncc": "0.23.0",
-    "eslint": "^7.6.0",
+    "eslint": "7.7.0",
+    "eslint-plugin-jest": "23.20.0",
     "jest": "^26.2.2",
     "js-yaml": "^3.14.0",
     "ts-jest": "^26.1.4",
+    "ts-node-dev": "^1.0.0-pre.60",
     "typescript": "^3.9.7"
   },
   "bugs": {

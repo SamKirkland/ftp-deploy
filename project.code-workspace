@@ -7,7 +7,9 @@
 	"settings": {
 		"files.exclude": {
 			"**/node_modules": true
-		}
+		},
+		"javascript.preferences.quoteStyle": "double",
+		"typescript.preferences.quoteStyle": "double"
 	},
 	"launch": {
 		"version": "0.2.0",

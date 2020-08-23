@@ -11,9 +11,9 @@ export class HashDiff implements IDiff {
         const deleteList: Record[] = [];
         const replaceList: Record[] = [];
 
-        let sizeUpload: number = 0;
-        let sizeDelete: number = 0;
-        let sizeReplace: number = 0;
+        let sizeUpload = 0;
+        let sizeDelete = 0;
+        let sizeReplace = 0;
 
         // alphabetize each list based off path
         const localFilesSorted = localFiles.data.sort((first, second) => first.name.localeCompare(second.name));

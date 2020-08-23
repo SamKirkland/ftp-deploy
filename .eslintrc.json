@@ -14,14 +14,7 @@
     "import/no-namespace": "off",
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": "error",
-    "@typescript-eslint/explicit-member-accessibility": [
-      "error",
-      {
-        "accessibility": "no-public"
-      }
-    ],
     "@typescript-eslint/no-require-imports": "error",
-    "@typescript-eslint/array-type": "error",
     "@typescript-eslint/await-thenable": "error",
     "@typescript-eslint/func-call-spacing": [
       "error",
@@ -34,7 +27,6 @@
     "@typescript-eslint/no-inferrable-types": "error",
     "@typescript-eslint/no-misused-new": "error",
     "@typescript-eslint/no-namespace": "error",
-    "@typescript-eslint/no-non-null-assertion": "warn",
     "@typescript-eslint/no-unnecessary-qualifier": "error",
     "@typescript-eslint/no-unnecessary-type-assertion": "error",
     "@typescript-eslint/no-useless-constructor": "error",
@@ -51,6 +43,6 @@
   "env": {
     "node": true,
     "es6": true,
-    "jest/globals": true
+    "jest": true
   }
 }

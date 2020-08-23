@@ -7,7 +7,8 @@ After the initial sync only differences and synced, making deployments super fas
 ---
 
 ## How to Run
-- Install the npm package using `npm install --dev-only @samkirkland/ftp-deploy`
+#### Option 1 - Command Line
+- Install the npm package using `npm install @samkirkland/ftp-deploy --only=dev`
 - Run via command line `npm run ftp-deploy --server ftp.samkirkland.com --username test@samkirkland.com --password \"CrazyUniquePassword&%123\"`
 
 - **Or you can add a script to make deployments easier**
@@ -17,13 +18,33 @@ After the initial sync only differences and synced, making deployments super fas
 Example of `package.json`:
 ```json
 {
-  ...
   "scripts": {
-    ...
     "deploy": "ftp-deploy --server ftp.samkirkland.com --username test@samkirkland.com --password \"CrazyUniquePassword&%123\"",
   },
-  ...
 }
+```
+
+#### Option 2 - Code
+- Install the npm package using `npm install @samkirkland/ftp-deploy --only=dev`
+- Import the code and use it via normal node modules
+
+Example of `myCustomDeployment.js`:
+```js
+import { deploy, excludeDefaults } from "ftp-deploy";
+
+async function deployMyCode() {
+  console.log("Deploy started");
+  await deploy({
+    server: "ftp.samkirkland.com",
+    username: "username@samkirkland.com",
+    password: `CrazyUniquePassword&%123`, // note: I'm using backticks here ` so I don't have to escape quotes
+    exclude: [...excludeDefaults, "dontDeployThisFolder/**"] // excludeDefaults will exclude .git files and node_modules
+  });
+  console.log("Deploy done!");
+}
+
+deployMyCode();
+
 ```
 
 ### Automatically Deploying

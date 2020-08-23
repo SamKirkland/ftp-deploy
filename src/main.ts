@@ -1,4 +1,3 @@
-import * as core from "@actions/core";
 import * as ftp from "basic-ftp";
 import readdir, { Stats } from "@jsdevtools/readdir-enhanced";
 import crypto from "crypto";
@@ -6,29 +5,10 @@ import fs from "fs";
 import multiMatch from "multiMatch";
 import { Stream } from "stream";
 import { FTPError, FTPResponse } from "basic-ftp";
-import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode } from "./types";
+import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments } from "./types";
 import { HashDiff } from "./HashDiff";
-import { pluralize, Timings, Logger } from "./utilities";
+import { pluralize, Timings, Logger, ILogger } from "./utilities";
 import prettyBytes from "pretty-bytes";
-import yargs from "yargs";
-
-const argv = yargs.options({
-  "server": { type: "string", demandOption: true },
-  "username": { type: "string", demandOption: true },
-  "password": { type: "string", demandOption: true },
-  "local-dir": { type: "string", default: "./" },
-  "server-dir": { type: "string", default: "./" },
-  "state-name": { type: "string", default: ".ftp-deploy-sync-state.json" },
-  "dry-run": { type: "boolean", default: false, description: "Prints which modifications will be made with current config options, but doesn't actually make any changes" },
-  "dangerous-clean-slate": { type: "boolean", default: false, description: "Deletes ALL contents of server-dir, even items in excluded with 'exclude' argument" },
-  "include": { type: "array", default: [], description: "An array of glob patterns, these files will always be included in the publish/delete process - even if no change occurred" },
-  "exclude": { type: "array", default: [".git*", ".git*/**", "node_modules/**", "node_modules/**/*"], description: "An array of glob patterns, these files will not be included in the publish/delete process" },
-  "log-level": { choices: ["warn", "info", "debug"], default: "info", description: "How much information should print. warn=only important info, info=warn+file changes, debug=print everything the script is doing" },
-})
-  .example("$0 --server ftp://samkirkland.com --username user --password pass", "")
-  .help("help")
-  .epilog("Read more at https://github.com/SamKirkland/FTP-Deploy-Action")
-  .argv;
 
 
 async function fileHash(filename: string, algorithm: "md5" | "sha1" | "sha256" | "sha512"): Promise<string> {
@@ -38,7 +18,7 @@ async function fileHash(filename: string, algorithm: "md5" | "sha1" | "sha256" |
     let shasum = crypto.createHash(algorithm);
     try {
       let s = fs.createReadStream(filename);
-      s.on("data", function (data) {
+      s.on("data", function (data: any) {
         shasum.update(data)
       })
       // making digest
@@ -53,19 +33,19 @@ async function fileHash(filename: string, algorithm: "md5" | "sha1" | "sha256" |
 }
 
 // Excludes takes precedence over includes
-function includeExcludeFilter(stat: Stats) {
+function includeExcludeFilter(stat: Stats, args: IFtpDeployArguments) {
   // match exclude, return immediatley
-  if (argv.exclude !== null) {
-    const exclude = multiMatch(stat.path, argv.exclude, { matchBase: true, dot: true });
+  if (args.exclude !== null) {
+    const exclude = multiMatch(stat.path, args.exclude, { matchBase: true, dot: true });
 
     if (exclude.length > 0) {
       return false;
     }
   }
 
-  if (argv.include !== null) {
+  if (args.include !== null) {
     // matches include - return immediatley
-    const include = multiMatch(stat.path, argv.include, { matchBase: true, dot: true });
+    const include = multiMatch(stat.path, args.include, { matchBase: true, dot: true });
     if (include.length > 0) {
       return true;
     }
@@ -74,8 +54,8 @@ function includeExcludeFilter(stat: Stats) {
   return true;
 }
 
-async function getLocalFiles(): Promise<IFileList> {
-  const files = await readdir.async("./", { deep: true, stats: true, sep: "/", filter: includeExcludeFilter });
+async function getLocalFiles(args: IFtpDeployArguments): Promise<IFileList> {
+  const files = await readdir.async("./", { deep: true, stats: true, sep: "/", filter: (stat) => includeExcludeFilter(stat, args) });
   const records: Record[] = [];
 
   for (let stat of files) {
@@ -118,7 +98,7 @@ async function downloadFileList(client: ftp.Client, path: string): Promise<IFile
     const downloadStream = new Stream.Writable();
     const chunks: any[] = [];
 
-    downloadStream._write = (chunk, encoding, next) => {
+    downloadStream._write = (chunk: any, encoding: any, next: any) => {
       chunks.push(chunk);
       next();
     }
@@ -134,7 +114,7 @@ async function downloadFileList(client: ftp.Client, path: string): Promise<IFile
       }
     });
 
-    client.downloadTo(downloadStream, path).catch((reason) => {
+    client.downloadTo(downloadStream, path).catch((reason: any) => {
       reject(`Can't open due to: "${reason}"`)
     });
   });
@@ -179,7 +159,7 @@ async function upDir(client: ftp.Client, dirCount: number | null | undefined): P
  * Note working dir is modified and NOT reset after upload
  * For now we are going to reset it - but this will be removed for performance
  */
-async function uploadFile(client: ftp.Client, filePath: string): Promise<void> {
+async function uploadFile(client: ftp.Client, filePath: string, logger: ILogger): Promise<void> {
   logger.all(`uploading "${filePath}"`);
 
   const path = getFileBreadcrumbs(filePath);
@@ -205,7 +185,7 @@ async function uploadFile(client: ftp.Client, filePath: string): Promise<void> {
   logger.debug(`  completed`);
 }
 
-async function createFolder(client: ftp.Client, folderPath: string): Promise<void> {
+async function createFolder(client: ftp.Client, folderPath: string, logger: ILogger): Promise<void> {
   logger.all(`creating folder "${folderPath + "/"}"`);
 
   const path = getFileBreadcrumbs(folderPath + "/");
@@ -224,7 +204,7 @@ async function createFolder(client: ftp.Client, folderPath: string): Promise<voi
   logger.debug(`  completed`);
 }
 
-async function removeFolder(client: ftp.Client, folderPath: string): Promise<void> {
+async function removeFolder(client: ftp.Client, folderPath: string, logger: ILogger): Promise<void> {
   logger.all(`removing folder "${folderPath + "/"}"`);
 
   const path = getFileBreadcrumbs(folderPath + "/");
@@ -256,7 +236,7 @@ async function removeFolder(client: ftp.Client, folderPath: string): Promise<voi
   logger.info(`  completed`);
 }
 
-async function removeFile(client: ftp.Client, filePath: string): Promise<void> {
+async function removeFile(client: ftp.Client, filePath: string, logger: ILogger): Promise<void> {
   logger.all(`removing ${filePath}...`);
 
   const path = getFileBreadcrumbs(filePath);
@@ -295,153 +275,148 @@ async function removeFile(client: ftp.Client, filePath: string): Promise<void> {
   logger.info(`  Completed`);
 }
 
-const logger = new Logger(argv["log-level"] as any);
 
-async function runScript(): Promise<void> {
+export async function deploy(args: IFtpDeployArguments): Promise<void> {
+  const logger = new Logger(args["log-level"] as any);
+
+  logger.all(`------------------------------------------------------`);
+  logger.all(`🚀 Welcome. Let's deploy some stuff!   `);
+  logger.all(`------------------------------------------------------`);
+  logger.all(`If you found this project helpful, please support it`);
+  logger.all(`by giving it a ⭐ on Github --> https://github.com/SamKirkland/FTP-Deploy-Action`);
+
+  const timings = new Timings();
+  timings.start("total");
+
+  timings.start("hash");
+  const localFiles = await getLocalFiles(args);
+  timings.end("hash");
+
+  fs.writeFileSync(`./${args["state-name"]}`, JSON.stringify(localFiles, undefined, 4), { encoding: "utf8" });
+
+  const client = new ftp.Client();
+  client.ftp.verbose = args["log-level"] === "debug";
+
+  let totalBytesUploaded = 0;
   try {
-    logger.all(`------------------------------------------------------`);
-    logger.all(`🚀 Welcome. Let's deploy some stuff!   `);
-    logger.all(`------------------------------------------------------`);
-    logger.all(`If you found this project helpful, please support it`);
-    logger.all(`by giving it a ⭐ on Github --> https://github.com/SamKirkland/FTP-Deploy-Action`);
+    timings.start("connecting");
+    await client.access({
+      host: args.server,
+      user: args.username,
+      password: args.password,
+      secure: false
+    });
+    timings.end("connecting");
 
-    const timings = new Timings();
-    timings.start("total");
-
-    timings.start("hash");
-    const localFiles = await getLocalFiles();
-    timings.end("hash");
-
-    fs.writeFileSync(`./${argv["state-name"]}`, JSON.stringify(localFiles, undefined, 4), { encoding: "utf8" });
-
-    const client = new ftp.Client();
-    client.ftp.verbose = argv["log-level"] === "debug";
-
-    let totalBytesUploaded: number = 0;
     try {
-      timings.start("connecting");
-      await client.access({
-        host: argv.server,
-        user: argv.username,
-        password: argv.password,
-        secure: false
-      });
-      timings.end("connecting");
+      let serverFiles: IFileList;
 
       try {
-        let serverFiles: IFileList;
-
-        try {
-          if (argv["dangerous-clean-slate"]) {
-            logger.all(`------------------------------------------------------`);
-            logger.all("🗑️ Removing all files on the server because 'dangerous-clean-slate' was set, this will make the deployment very slow...");
-            await client.clearWorkingDir();
-            logger.all("Clear complete");
-
-            throw new Error("nope");
-          }
-
-          serverFiles = await downloadFileList(client, argv["state-name"]);
+        if (args["dangerous-clean-slate"]) {
           logger.all(`------------------------------------------------------`);
-          logger.all(`Last published on 📅 ${new Date(serverFiles.generatedTime).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "numeric" })}`);
-        }
-        catch (e) {
-          logger.all(`------------------------------------------------------`);
-          logger.all(`No file exists on the server "${argv["state-name"]}" - this much be your first publish! 🎉`);
-          logger.all(`The first publish will take a while... but once the initial sync is done only differences are published!`);
-          logger.all(`If you get this message and its NOT your first publish, something is wrong.`);
+          logger.all("🗑️ Removing all files on the server because 'dangerous-clean-slate' was set, this will make the deployment very slow...");
+          await client.clearWorkingDir();
+          logger.all("Clear complete");
 
-          // set the server state to nothing, because we don't know what the server state is
-          serverFiles = {
-            description: syncFileDescription,
-            version: "1.0.0",
-            generatedTime: new Date().getTime(),
-            data: [],
-          };
+          throw new Error("nope");
         }
 
-        const diffTool: IDiff = new HashDiff();
-        const diffs = diffTool.getDiffs(localFiles, serverFiles, logger);
-
-        totalBytesUploaded = diffs.sizeUpload + diffs.sizeReplace;
-
-        timings.start("upload");
-        try {
-          const totalCount = diffs.delete.length + diffs.upload.length + diffs.replace.length;
-
-          logger.all(`------------------------------------------------------`);
-          logger.all(`Making changes to ${totalCount} ${pluralize(totalCount, "file", "files")} to sync server state`);
-          logger.all(`Uploading: ${prettyBytes(diffs.sizeUpload)} -- Deleting: ${prettyBytes(diffs.sizeDelete)} -- Replacing: ${prettyBytes(diffs.sizeReplace)}`);
-          logger.all(`------------------------------------------------------`);
-
-          // create new folders
-          for (const file of diffs.upload.filter(item => item.type === "folder")) {
-            await createFolder(client, file.name);
-          }
-
-          // upload new files
-          for (const file of diffs.upload.filter(item => item.type === "file").filter(item => item.name !== argv["state-name"])) {
-            await uploadFile(client, file.name);
-          }
-
-          // replace new files
-          for (const file of diffs.replace.filter(item => item.type === "file").filter(item => item.name !== argv["state-name"])) {
-            // note: FTP will replace old files with new files. We run replacements after uploads to limit downtime
-            await uploadFile(client, file.name);
-          }
-
-          // delete old files
-          for (const file of diffs.delete.filter(item => item.type === "file")) {
-            await removeFile(client, file.name);
-          }
-
-          // delete old folders
-          for (const file of diffs.delete.filter(item => item.type === "folder")) {
-            await removeFolder(client, file.name);
-          }
-
-          logger.all(`------------------------------------------------------`);
-          logger.all(`🎉 Sync complete. Saving current server state to "${argv["state-name"]}"`);
-          await client.uploadFrom(argv["state-name"], argv["state-name"]);
-        }
-        catch (e) {
-          if (e.code === 553) {
-            logger.warn("Error 553, you don't have access to upload the file");
-            return;
-          }
-
-          logger.warn("Error:", typeof e, JSON.stringify(e), e);
-        }
-        timings.end("upload");
-
+        serverFiles = await downloadFileList(client, args["state-name"]);
+        logger.all(`------------------------------------------------------`);
+        logger.all(`Last published on 📅 ${new Date(serverFiles.generatedTime).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "numeric" })}`);
       }
-      catch (error) {
-        const ftpError = error as FTPError;
-        if (ftpError.code === ErrorCode.FileNotFoundOrNoAccess) {
-          logger.warn("Couldn't find file");
-        }
-        logger.warn(ftpError);
+      catch (e) {
+        logger.all(`------------------------------------------------------`);
+        logger.all(`No file exists on the server "${args["state-name"]}" - this much be your first publish! 🎉`);
+        logger.all(`The first publish will take a while... but once the initial sync is done only differences are published!`);
+        logger.all(`If you get this message and its NOT your first publish, something is wrong.`);
+
+        // set the server state to nothing, because we don't know what the server state is
+        serverFiles = {
+          description: syncFileDescription,
+          version: "1.0.0",
+          generatedTime: new Date().getTime(),
+          data: [],
+        };
       }
 
-    }
-    catch (err) {
-      logger.warn(err);
-    }
-    client.close();
+      const diffTool: IDiff = new HashDiff();
+      const diffs = diffTool.getDiffs(localFiles, serverFiles, logger);
 
-    timings.end("total");
+      totalBytesUploaded = diffs.sizeUpload + diffs.sizeReplace;
 
-    const uploadSpeed = prettyBytes(totalBytesUploaded / (timings.getTime("upload") / 1000));
-    logger.all(`------------------------------------------------------`);
-    logger.all(`Time spent hashing:          ${timings.getTimeFormatted("hash")}`);
-    logger.all(`Time spent connecting to server:    ${timings.getTimeFormatted("connecting")}`);
-    logger.all(`Time spent deploying:        ${timings.getTimeFormatted("upload")} (${uploadSpeed}/second)`);
-    logger.all(`------------------------------------------------------`);
-    logger.all(`Total time:                  ${timings.getTimeFormatted("total")}`);
-    logger.all(`------------------------------------------------------`);
-  } catch (error) {
-    core.setFailed(error.message);
+      timings.start("upload");
+      try {
+        const totalCount = diffs.delete.length + diffs.upload.length + diffs.replace.length;
+
+        logger.all(`------------------------------------------------------`);
+        logger.all(`Making changes to ${totalCount} ${pluralize(totalCount, "file", "files")} to sync server state`);
+        logger.all(`Uploading: ${prettyBytes(diffs.sizeUpload)} -- Deleting: ${prettyBytes(diffs.sizeDelete)} -- Replacing: ${prettyBytes(diffs.sizeReplace)}`);
+        logger.all(`------------------------------------------------------`);
+
+        // create new folders
+        for (const file of diffs.upload.filter(item => item.type === "folder")) {
+          await createFolder(client, file.name, logger);
+        }
+
+        // upload new files
+        for (const file of diffs.upload.filter(item => item.type === "file").filter(item => item.name !== args["state-name"])) {
+          await uploadFile(client, file.name, logger);
+        }
+
+        // replace new files
+        for (const file of diffs.replace.filter(item => item.type === "file").filter(item => item.name !== args["state-name"])) {
+          // note: FTP will replace old files with new files. We run replacements after uploads to limit downtime
+          await uploadFile(client, file.name, logger);
+        }
+
+        // delete old files
+        for (const file of diffs.delete.filter(item => item.type === "file")) {
+          await removeFile(client, file.name, logger);
+        }
+
+        // delete old folders
+        for (const file of diffs.delete.filter(item => item.type === "folder")) {
+          await removeFolder(client, file.name, logger);
+        }
+
+        logger.all(`------------------------------------------------------`);
+        logger.all(`🎉 Sync complete. Saving current server state to "${args["state-name"]}"`);
+        await client.uploadFrom(args["state-name"], args["state-name"]);
+      }
+      catch (e) {
+        if (e.code === 553) {
+          logger.warn("Error 553, you don't have access to upload the file");
+          return;
+        }
+
+        logger.warn("Error:", typeof e, JSON.stringify(e), e);
+      }
+      timings.end("upload");
+
+    }
+    catch (error) {
+      const ftpError = error as FTPError;
+      if (ftpError.code === ErrorCode.FileNotFoundOrNoAccess) {
+        logger.warn("Couldn't find file");
+      }
+      logger.warn(ftpError);
+    }
+
   }
-}
+  catch (err) {
+    logger.warn(err);
+  }
+  client.close();
 
-runScript();
+  timings.end("total");
+
+  const uploadSpeed = prettyBytes(totalBytesUploaded / (timings.getTime("upload") / 1000));
+  logger.all(`------------------------------------------------------`);
+  logger.all(`Time spent hashing:          ${timings.getTimeFormatted("hash")}`);
+  logger.all(`Time spent connecting to server:    ${timings.getTimeFormatted("connecting")}`);
+  logger.all(`Time spent deploying:        ${timings.getTimeFormatted("upload")} (${uploadSpeed}/second)`);
+  logger.all(`------------------------------------------------------`);
+  logger.all(`Total time:                  ${timings.getTimeFormatted("total")}`);
+  logger.all(`------------------------------------------------------`);
+}

@@ -1,5 +1,19 @@
 import { ILogger } from "./utilities";
 
+export interface IFtpDeployArguments {
+    server: string;
+    username: string;
+    password: string;
+    "local-dir"?: string;
+    "server-dir"?: string;
+    "state-name"?: string;
+    "dry-run"?: boolean;
+    "dangerous-clean-slate"?: boolean;
+    include?: string[];
+    exclude?: string[];
+    "log-level"?: string;
+}
+
 export interface IFile {
     type: "file";
     name: string;

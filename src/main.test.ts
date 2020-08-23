@@ -1,7 +1,7 @@
 import { HashDiff } from "./HashDiff";
 import { IFileList } from "./types";
 import { Record } from "./types";
-import { Logger, ILogger } from "./utilities";
+import { ILogger } from "./utilities";
 
 const tenFiles: Record[] = [
     {
@@ -67,10 +67,10 @@ const tenFiles: Record[] = [
 ];
 
 class MockedLogger implements ILogger {
-    all(...data: any[]) { };
-    warn(...data: any[]) { };
-    info(...data: any[]) { };
-    debug(...data: any[]) { };
+    all() { };
+    warn() { };
+    info() { };
+    debug() { };
 }
 
 describe("HashDiff", () => {

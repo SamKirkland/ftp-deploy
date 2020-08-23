@@ -1,0 +1,297 @@
+{
+    "description": "DO NOT DELETE THIS FILE. This file is used to keep track of which files have been synced in the most recent deployment. If you delete this file a resync will need to be done (which can take a while) - read more: https://github.com/SamKirkland/FTP-Deploy-Action",
+    "version": "1.0.0",
+    "generatedTime": 1598141562251,
+    "data": [
+        {
+            "type": "file",
+            "name": ".eslintignore",
+            "size": 26,
+            "hash": "197d7c161beca017ab1096898a3f078f6e5d21c79b39a082d814bec0f3c8e4e1"
+        },
+        {
+            "type": "file",
+            "name": ".eslintrc.json",
+            "size": 1980,
+            "hash": "8238caa5e9d7e5ecb35f7295e2275ece4e72aa029c0134a182b0661ab9169b0d"
+        },
+        {
+            "type": "folder",
+            "name": "dist"
+        },
+        {
+            "type": "folder",
+            "name": "lib"
+        },
+        {
+            "type": "file",
+            "name": "jest.config.js",
+            "size": 250,
+            "hash": "f5c0179d59a4691b5e34d7c5e2abe7be7497229d844d30c51b430bab48343fe4"
+        },
+        {
+            "type": "file",
+            "name": "LICENSE",
+            "size": 1068,
+            "hash": "8dada82894b56d7c8bec083d62ed9a3b3218de38ec8230970e8992f5e53ba63a"
+        },
+        {
+            "type": "folder",
+            "name": "node_modules"
+        },
+        {
+            "type": "file",
+            "name": "package-lock.json",
+            "size": 277033,
+            "hash": "617a7109e970ca141262da2c7e40770fea0aa28a28a8133c4578c36c9f284e32"
+        },
+        {
+            "type": "file",
+            "name": "package.json",
+            "size": 1702,
+            "hash": "d90532e3870a26543780c289b8908c690f55929b2a1d841c3bca5c9a9eef22fe"
+        },
+        {
+            "type": "file",
+            "name": "project.code-workspace",
+            "size": 580,
+            "hash": "3ab0e5e4dbd29a82811d4ec2f0800269b3ce243dda9de863ad33f9ef53247cad"
+        },
+        {
+            "type": "file",
+            "name": "README.md",
+            "size": 4588,
+            "hash": "b40db50c9b270ba0fb9000bc68b75ff3d18a41524f4550f40bcf4bcadd3ad867"
+        },
+        {
+            "type": "folder",
+            "name": "src"
+        },
+        {
+            "type": "file",
+            "name": "tsconfig.json",
+            "size": 952,
+            "hash": "79e91dfcbdc5975ce378306680fb72bd353fd8e91fb3bbd20e21ed0280842a51"
+        },
+        {
+            "type": "file",
+            "name": "dist/index.js",
+            "size": 482197,
+            "hash": "e67720feb3ce0d19976cbdabeae57f16ce06008d2f7b5747d0c6ab170ea4fc2b"
+        },
+        {
+            "type": "folder",
+            "name": "dist/locales"
+        },
+        {
+            "type": "file",
+            "name": "lib/HashDiff.js",
+            "size": 3669,
+            "hash": "84f1aa7bb8ca41f0133a2b63f183743bd15eb8eeca2d6993fa400c3965409a52"
+        },
+        {
+            "type": "file",
+            "name": "lib/main.js",
+            "size": 17943,
+            "hash": "7cee3f50a7ab0740bf23e259ad51a84e4c89da9b20de9211672fe9062760e479"
+        },
+        {
+            "type": "file",
+            "name": "lib/recursive-readdir.js",
+            "size": 3322,
+            "hash": "3f466db40d0b75a77965ac3832b0d3e7f6999c6a23bcc3c6fa3d43baf72acc49"
+        },
+        {
+            "type": "file",
+            "name": "lib/types.js",
+            "size": 5851,
+            "hash": "1160104cc2879034832bc9d942c14d456d2a5e2fd8c5c64e6d1e082833e32b98"
+        },
+        {
+            "type": "file",
+            "name": "lib/utilities.js",
+            "size": 2271,
+            "hash": "720de68876828adf14e939ba62cd08e5788b39796211fc174010c79b62a9f4a0"
+        },
+        {
+            "type": "file",
+            "name": "src/HashDiff.ts",
+            "size": 3682,
+            "hash": "18d32e584b3d955185631a1cedd16d3bfb3a446b50c57bca6424f1390a14ec94"
+        },
+        {
+            "type": "file",
+            "name": "src/main.test.ts",
+            "size": 5114,
+            "hash": "06dc81e580a363618453639bc640cc2a33b3e69132da7ee4357694b75185dbde"
+        },
+        {
+            "type": "file",
+            "name": "src/main.ts",
+            "size": 15374,
+            "hash": "eee1682ddf43f6ac7b776c13079c96898ff064b8873c44545f51821486d55e44"
+        },
+        {
+            "type": "file",
+            "name": "src/recursive-readdir.ts",
+            "size": 3454,
+            "hash": "e3da8dec811b02a1d5aaf2069eb8ac37510fec087016a707d9eaf413bcdacfef"
+        },
+        {
+            "type": "file",
+            "name": "src/types.ts",
+            "size": 4210,
+            "hash": "d1d71be5f345386258ab693ff504c53190f438921f8e14615bf8a962723b5b12"
+        },
+        {
+            "type": "file",
+            "name": "src/utilities.ts",
+            "size": 2417,
+            "hash": "e0a57a6cd97c7f5f4080c99535a87716ecd69a9bf838d037947de42ddc53308f"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/be.json",
+            "size": 2602,
+            "hash": "134235e6c034c2ff51eeef9f00032cd47cbd4f836744fae0821143207c857edf"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/de.json",
+            "size": 1805,
+            "hash": "dd49fd237f42a5c3da5140730ff81dbfa543bd8eb9a529331b876e00d46902e1"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/en.json",
+            "size": 1917,
+            "hash": "cd7fbd66c1d52da7b7897dfc44e270ebaf3970e1cc34468efe5e346f74674573"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/es.json",
+            "size": 1885,
+            "hash": "5e9eab1fbfdde64463e1cae36fbbafe035d0a80fbfe13ec99557d38e5ac9e020"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/fi.json",
+            "size": 2113,
+            "hash": "04633d64ab6fcbe1fb96ef3c3a347f73995621b97e560729c64d170521ad7aa0"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/fr.json",
+            "size": 2117,
+            "hash": "12fcfb7c6d0f59c378db746bbf018a1fc3b662b9a4fcc7caa6a037e0f5c375f0"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/hi.json",
+            "size": 3074,
+            "hash": "66aed85c3d7e2b6564e401c32d12d406983b69f5b965f01aab1b7cbb1c3ba2cf"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/hu.json",
+            "size": 1883,
+            "hash": "5149e6aaec4cd1facd504efbae03a5cc2d5f6d24cd6c6418c818740b8abd72a2"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/id.json",
+            "size": 1821,
+            "hash": "3745df73a41c026c2ef8fff048c56afd4e1e362deacc43c04be260fb0d3df93c"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/it.json",
+            "size": 1855,
+            "hash": "2eed3f6e2f402a7a5c1049ef323d6670e427e9905233ce66b38fbfa8cef282f2"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/ja.json",
+            "size": 2411,
+            "hash": "b63a4a4d7b7dfbbcd25a5359197171a783c824e7d408c3b2ccc2e360810e3a15"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/ko.json",
+            "size": 2262,
+            "hash": "adb39ecd2e9811c4097155e20e41b404f4d0b2794120ada8d3752dba60c51683"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/nb.json",
+            "size": 1680,
+            "hash": "8de6f5381e45e448536b0143a6cc6130b7d87ea495881e5bebc4e9569238ebe6"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/nl.json",
+            "size": 1958,
+            "hash": "638c26e2d638bc08023e4e9924237c2c0f67130eb4d454c824b15cd4da916671"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/nn.json",
+            "size": 1661,
+            "hash": "466b2d749e6115b0bc8fe0fce420f4e049f3c7e69831ae4ab0e66b402230a627"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/pirate.json",
+            "size": 569,
+            "hash": "0e66add12f48117254852ebac22250ad18bbc859b5de40301dd047800be40e36"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/pl.json",
+            "size": 2075,
+            "hash": "64d84f86e74e9b14e6cb8159e65cb2a2b0302e848d61fdd25f8710e70446665c"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/pt.json",
+            "size": 1917,
+            "hash": "d36c160b1f4757b6275cb5dd4135d2d8262d8d1b79147e3c3fcf9acecc1b89d2"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/pt_BR.json",
+            "size": 1932,
+            "hash": "503075049239e50e8fe82b7d06d062f5a1d69f26346d05af487dc8b3e090596e"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/ru.json",
+            "size": 2674,
+            "hash": "05cd63df5acbbfa2017384f291ac55ec2573424cdd682aed41e0c07562a48519"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/th.json",
+            "size": 3278,
+            "hash": "3ff78ad6e861403ff1c94707d6e13dd87e948424008156debc0e7d3a4f4500d3"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/tr.json",
+            "size": 1912,
+            "hash": "4744c36d2531029ed93d593a25c595f4ea1f9c2f4f037867aa8f36161f959886"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/zh_CN.json",
+            "size": 1907,
+            "hash": "bacf8a4dcdd23146ff5834e7853536a7d97a1baca15a8ad5939c719e583a3f59"
+        },
+        {
+            "type": "file",
+            "name": "dist/locales/zh_TW.json",
+            "size": 1831,
+            "hash": "213dc59eb7abce94422f164022d964924dcd52ff9739db14d3eea46986e9f7cb"
+        }
+    ]
+}
