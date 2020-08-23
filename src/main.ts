@@ -5,11 +5,12 @@ import fs from "fs";
 import multiMatch from "multiMatch";
 import { Stream } from "stream";
 import { FTPError, FTPResponse } from "basic-ftp";
-import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments } from "./types";
+import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments, currentVersion } from "./types";
 import { HashDiff } from "./HashDiff";
 import { pluralize, Timings, Logger, ILogger } from "./utilities";
 import prettyBytes from "pretty-bytes";
 
+export const excludeDefaults = [".git*", ".git*/**", "node_modules/**", "node_modules/**/*"];
 
 async function fileHash(filename: string, algorithm: "md5" | "sha1" | "sha256" | "sha512"): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -87,7 +88,7 @@ async function getLocalFiles(args: IFtpDeployArguments): Promise<IFileList> {
 
   return {
     description: syncFileDescription,
-    version: "1.0.0",
+    version: currentVersion,
     generatedTime: new Date().getTime(),
     data: records
   };
@@ -280,7 +281,7 @@ export async function deploy(args: IFtpDeployArguments): Promise<void> {
   const logger = new Logger(args["log-level"] as any);
 
   logger.all(`------------------------------------------------------`);
-  logger.all(`🚀 Welcome. Let's deploy some stuff!   `);
+  logger.all(`🚀 Thanks for using ftp-deploy version ${currentVersion}. Let's deploy some stuff!   `);
   logger.all(`------------------------------------------------------`);
   logger.all(`If you found this project helpful, please support it`);
   logger.all(`by giving it a ⭐ on Github --> https://github.com/SamKirkland/FTP-Deploy-Action`);
@@ -334,7 +335,7 @@ export async function deploy(args: IFtpDeployArguments): Promise<void> {
         // set the server state to nothing, because we don't know what the server state is
         serverFiles = {
           description: syncFileDescription,
-          version: "1.0.0",
+          version: currentVersion,
           generatedTime: new Date().getTime(),
           data: [],
         };

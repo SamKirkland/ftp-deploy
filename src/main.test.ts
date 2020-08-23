@@ -1,5 +1,5 @@
 import { HashDiff } from "./HashDiff";
-import { IFileList } from "./types";
+import { IFileList, currentVersion } from "./types";
 import { Record } from "./types";
 import { ILogger } from "./utilities";
 
@@ -75,8 +75,8 @@ class MockedLogger implements ILogger {
 
 describe("HashDiff", () => {
     const thing = new HashDiff();
-    const emptyFileList: IFileList = { version: "1.0.0", description: "", generatedTime: new Date().getTime(), data: [] };
-    const minimalFileList: IFileList = { version: "1.0.0", description: "", generatedTime: new Date().getTime(), data: tenFiles };
+    const emptyFileList: IFileList = { version: currentVersion, description: "", generatedTime: new Date().getTime(), data: [] };
+    const minimalFileList: IFileList = { version: currentVersion, description: "", generatedTime: new Date().getTime(), data: tenFiles };
 
     test("Empty Client, Empty Server", () => {
         const diffs = thing.getDiffs(emptyFileList, emptyFileList, new MockedLogger());
