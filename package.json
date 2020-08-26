@@ -3,18 +3,18 @@
   "version": "0.0.0",
   "private": false,
   "description": "Deploy files to a ftp server",
-  "main": "dist/index.js",
+  "main": "./dist/module/index.js",
   "bin": {
-    "ftp-deploy": "dist/index.js"
+    "ftp-deploy": "./dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc ",
-    "start": "tsc && node ./lib/main.js",
-    "deploy": "tsc && node ./lib/main.js --server ftp.samkirkland.com --username \"test@samkirkland.com\" --password \"notARealPassword\"",
-    "deploy2": "tsc && ftp-deploy --server ftp.samkirkland.com --username \"test@samkirkland.com\" --password \"notARealPassword\"",
+    "build": "tsc",
+    "deploy": "tsc && node ./lib/cli.js --server wwwssr16.supercp.com --protocol ftps --secure strict --username \"ftp-deploy@samkirkland.com\" --password \"actualPasswordHere\" --exclude lib/** --exclude dist/** --exclude .git* --exclude .git*\/** --exclude node_modules\/** --exclude node_modules\/**\/*",
     "run": "ts-node-dev --respawn -- ./lib/main.js --ftp-server=test",
     "lint": "eslint src/**/*.ts",
-    "pack": "ncc build src/main.ts --out dist",
+    "pack": "npm run pack-module && npm run pack-cli",
+    "pack-module": "ncc build src/module.ts --out dist/module",
+    "pack-cli": "ncc build src/cli.ts --out dist/cli",
     "test": "jest"
   },
   "repository": {

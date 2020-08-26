@@ -1,14 +1,13 @@
 #! /usr/bin/env node
 
-import { deploy, excludeDefaults } from "../src/main";
-
+import { deploy, excludeDefaults } from "./module";
 import yargs from "yargs";
-
 
 const argv = yargs.options({
     "server": { type: "string", demandOption: true },
     "username": { type: "string", demandOption: true },
     "password": { type: "string", demandOption: true },
+    "port": { type: "number", default: 21 },
     "local-dir": { type: "string", default: "./" },
     "server-dir": { type: "string", default: "./" },
     "state-name": { type: "string", default: ".ftp-deploy-sync-state.json" },

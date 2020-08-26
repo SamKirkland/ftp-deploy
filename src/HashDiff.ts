@@ -43,7 +43,6 @@ export class HashDiff implements IDiff {
                 fileNameCompare = localFile.name.localeCompare(serverFile.name);
             }
 
-
             if (fileNameCompare < 0) {
                 let icon = localFile.type === "folder" ? `📁 Create` : `➕ Upload`;
 
@@ -55,7 +54,7 @@ export class HashDiff implements IDiff {
             else if (fileNameCompare > 0) {
                 let icon = serverFile.type === "folder" ? `📁` : `🗑️`;
 
-                logger.info(`${icon} Delete: ${serverFile.name}`);
+                logger.info(`${icon}  Delete: ${serverFile.name}    `);
                 deleteList.push(serverFile);
                 sizeDelete += serverFile.size ?? 0;
                 serverPosition += 1;

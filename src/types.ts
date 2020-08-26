@@ -1,19 +1,91 @@
 import { ILogger } from "./utilities";
 
 export const currentVersion = "1.0.0";
+export const syncFileDescription = "DO NOT DELETE THIS FILE. This file is used to keep track of which files have been synced in the most recent deployment. If you delete this file a resync will need to be done (which can take a while) - read more: https://github.com/SamKirkland/FTP-Deploy-Action";
 
 export interface IFtpDeployArguments {
     server: string;
     username: string;
     password: string;
+
+    /**
+     * Server port
+     * @default 21
+     */
+    port?: number;
+
+    /**
+     * "ftp": provides no encryption
+     * "ftps": full encryption newest standard (aka "explicit" ftps)
+     * "ftps-legacy": full encryption legacy standard (aka "implicit" ftps)
+     * @default "ftp"
+     */
+    protocol?: "ftp" | "ftps" | "ftps-legacy";
+
+    /** @default "./" */
     "local-dir"?: string;
+
+    /** @default "./" */
     "server-dir"?: string;
+
+    /** @default ".ftp-deploy-sync-state.json" */
     "state-name"?: string;
+
+    /**
+     * Prints which modifications will be made with current config options, but doesn't actually make any changes
+     * @default false
+     */
     "dry-run"?: boolean;
+
+    /**
+     * Deletes ALL contents of server-dir, even items in excluded with 'exclude' argument
+     * @default false
+     */
     "dangerous-clean-slate"?: boolean;
+
+    /**
+     * An array of glob patterns, these files will always be included in the publish/delete process - even if no change occurred
+     * @default []
+     */
     include?: string[];
+
+    /**
+     * An array of glob patterns, these files will not be included in the publish/delete process
+     * @default [ ".git*", ".git*\/**", "node_modules\/**", "node_modules\/**\/*" ]
+     */
     exclude?: string[];
+
+    /**
+     * How much information should print. warn=only important info, info=warn+file changes, debug=print everything the script is doing
+     * @default "info"
+     */
     "log-level"?: string;
+
+    /**
+     * When using protocol "ftps" or "ftps-legacy" should the cert name need to match exactly?
+     * Set this to "strict" to ensure your data is being encrypted
+     * 
+     * Defautls to loose because of the sheer volume of shared hosts that give ftp domains a cert without a matching common name
+     * @default "loose"
+     */
+    security?: "strict" | "loose";
+}
+
+export interface IFtpDeployArgumentsWithDefaults {
+    server: string;
+    username: string;
+    password: string;
+    port: number;
+    protocol: "ftp" | "ftps" | "ftps-legacy";
+    "local-dir": string;
+    "server-dir": string;
+    "state-name": string;
+    "dry-run": boolean;
+    "dangerous-clean-slate": boolean;
+    include: string[];
+    exclude: string[];
+    "log-level": string;
+    security: "strict" | "loose";
 }
 
 export interface IFile {
@@ -42,8 +114,6 @@ export interface IFileList {
     generatedTime: number;
     data: Record[];
 }
-
-export const syncFileDescription = "DO NOT DELETE THIS FILE. This file is used to keep track of which files have been synced in the most recent deployment. If you delete this file a resync will need to be done (which can take a while) - read more: https://github.com/SamKirkland/FTP-Deploy-Action";
 
 export type DiffResult = {
     upload: Record[];
