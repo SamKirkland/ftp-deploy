@@ -4,6 +4,9 @@ Syncs a local folder with a remote folder over ftp.
 
 After the initial sync only differences and synced, making deployments super fast!
 
+[![Latest Stable Version](https://img.shields.io/npm/v/@samkirkland/ftp-deploy.svg?style=flat-square)](https://www.npmjs.com/package/@samkirkland/ftp-deploy)
+[![NPM Downloads](https://img.shields.io/npm/dt/@samkirkland/ftp-deploy.svg?style=flat-square)](https://www.npmjs.com/package/@samkirkland/ftp-deploy)
+
 ---
 
 ## How to Run
@@ -30,7 +33,7 @@ Example of `package.json`:
 
 Example of `myCustomDeployment.js`:
 ```javascript
-import { deploy, excludeDefaults } from "ftp-deploy";
+import { deploy, excludeDefaults } from "@samkirkland/ftp-deploy";
 
 async function deployMyCode() {
   console.log("Deploy started");

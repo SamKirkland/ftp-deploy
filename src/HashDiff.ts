@@ -19,12 +19,12 @@ export class HashDiff implements IDiff {
         const localFilesSorted = localFiles.data.sort((first, second) => first.name.localeCompare(second.name));
         const serverFilesSorted = serverFiles.data.sort((first, second) => first.name.localeCompare(second.name));
 
-        logger.info(`------------------------------------------------------`);
+        logger.info(`----------------------------------------------------------------`);
         logger.info(`Local Files:\t${formatNumber(localFilesSorted.length)}`);
         logger.info(`Server Files:\t${formatNumber(localFilesSorted.length)}`);
-        logger.info(`------------------------------------------------------`);
+        logger.info(`----------------------------------------------------------------`);
         logger.info(`Calculating differences between client & server`);
-        logger.info(`------------------------------------------------------`);
+        logger.info(`----------------------------------------------------------------`);
 
         let localPosition = 0;
         let serverPosition = 0;

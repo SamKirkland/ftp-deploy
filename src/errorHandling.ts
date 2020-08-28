@@ -4,10 +4,10 @@ import { FTPError } from "basic-ftp";
 
 
 function outputOriginalErrorAndExit(logger: ILogger, error: any) {
-    logger.warn(`------------------------------------------------------`);
-    logger.warn(`Full Error below`);
-    logger.warn(`------------------------------------------------------`);
-    logger.warn("Full error:", error);
+    logger.all();
+    logger.all(`----------------------------------------------------------------`);
+    logger.all(`----------------------  Full Error below  ----------------------`);
+    logger.all(error);
     process.exit();
 }
 
@@ -17,9 +17,10 @@ function outputOriginalErrorAndExit(logger: ILogger, error: any) {
  * @param error exception
  */
 export function prettyError(logger: ILogger, args: IFtpDeployArgumentsWithDefaults, error: any): void {
-    logger.all(`------------------------------------------------------`);
-    logger.all(`------------------ A error occurred ------------------`);
-    logger.all(`------------------------------------------------------`);
+    logger.all();
+    logger.all(`----------------------------------------------------------------`);
+    logger.all(`---------------  🔥🔥🔥 A error occurred  🔥🔥🔥  --------------`);
+    logger.all(`----------------------------------------------------------------`);
 
     if (typeof error.code === "string") {
         const errorCode = error.code as string;
@@ -45,11 +46,23 @@ export function prettyError(logger: ILogger, args: IFtpDeployArgumentsWithDefaul
     }
 
     const ftpError = error as FTPError;
-    if (ftpError.code === ErrorCode.NotLoggedIn) {
-        logger.warn(`Could not login with the username "${args.username}" and password "${args.password}".`);
-        logger.warn(`Make sure you can login with those credentials. If you have a space or a quote in your username or password be sure to escape them!`);
+    if (typeof ftpError.code === "number") {
+        if (ftpError.code === ErrorCode.NotLoggedIn) {
+            const serverRequiresFTPS = ftpError.message.toLowerCase().includes("must use encryption");
 
-        outputOriginalErrorAndExit(logger, error);
+            if (serverRequiresFTPS) {
+                logger.warn(`The server you are connecting to requires encryption (ftps)`);
+                logger.warn(`Enable FTPS by using the protocol option.`);
+
+                outputOriginalErrorAndExit(logger, error);
+            }
+            else {
+                logger.warn(`Could not login with the username "${args.username}" and password "${args.password}".`);
+                logger.warn(`Make sure you can login with those credentials. If you have a space or a quote in your username or password be sure to escape them!`);
+
+                outputOriginalErrorAndExit(logger, error);
+            }
+        }
     }
 
 

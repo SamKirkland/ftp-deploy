@@ -1,6 +1,6 @@
 {
   "name": "@samkirkland/ftp-deploy",
-  "version": "0.0.0",
+  "version": "0.9.0",
   "private": false,
   "description": "Deploy files to a ftp server",
   "main": "./dist/module/index.js",
@@ -9,12 +9,12 @@
   },
   "scripts": {
     "build": "tsc",
-    "deploy": "tsc && node ./lib/cli.js --server wwwssr16.supercp.com --protocol ftps --secure strict --username \"ftp-deploy@samkirkland.com\" --password \"actualPasswordHere\" --exclude lib/** --exclude dist/** --exclude .git* --exclude .git*\/** --exclude node_modules\/** --exclude node_modules\/**\/*",
+    "deploy": "tsc && node ./lib/cli.js --server wwwssr16.supercp.com --protocol ftps --secure strict --username \"ftp-deploy@samkirkland.com\" --password \"actualPasswordHere\" --exclude lib/** --exclude dist/** --exclude .git* --exclude .git*/** --exclude node_modules/** --exclude node_modules/**/*",
     "run": "ts-node-dev --respawn -- ./lib/main.js --ftp-server=test",
     "lint": "eslint src/**/*.ts",
     "pack": "npm run pack-module && npm run pack-cli",
-    "pack-module": "ncc build src/module.ts --out dist/module",
-    "pack-cli": "ncc build src/cli.ts --out dist/cli",
+    "pack-module": "ncc build src/module/index.ts --out dist/module",
+    "pack-cli": "ncc build src/cli/index.ts --out dist/cli",
     "test": "jest"
   },
   "repository": {
@@ -30,8 +30,7 @@
   "license": "MIT",
   "dependencies": {
     "basic-ftp": "^4.6.2",
-    "fs": "^0.0.1-security",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.20",
     "multimatch": "^4.0.0",
     "pretty-bytes": "^5.3.0",
     "pretty-ms": "^7.0.0",
@@ -39,27 +38,27 @@
     "yargs": "^15.4.1"
   },
   "devDependencies": {
-    "@types/jest": "^26.0.8",
-    "@types/lodash": "^4.14.159",
+    "@types/jest": "^26.0.10",
+    "@types/lodash": "^4.14.160",
     "@types/minimatch": "^3.0.3",
-    "@types/node": "^14.0.27",
+    "@types/node": "^14.6.1",
     "@types/yargs": "^15.0.5",
-    "@typescript-eslint/eslint-plugin": "^3.9.1",
-    "@typescript-eslint/parser": "^3.8.0",
-    "@vercel/ncc": "0.23.0",
-    "eslint": "7.7.0",
-    "eslint-plugin-jest": "23.20.0",
-    "jest": "^26.2.2",
+    "@typescript-eslint/eslint-plugin": "^3.10.1",
+    "@typescript-eslint/parser": "^3.10.1",
+    "@vercel/ncc": "^0.24.0",
+    "eslint": "^7.7.0",
+    "eslint-plugin-jest": "^23.20.0",
+    "jest": "^26.4.2",
     "js-yaml": "^3.14.0",
-    "ts-jest": "^26.1.4",
-    "ts-node-dev": "^1.0.0-pre.60",
+    "ts-jest": "^26.3.0",
+    "ts-node-dev": "^1.0.0-pre.61",
     "typescript": "^3.9.7"
   },
   "bugs": {
     "url": "https://github.com/SamKirkland/ftp-deploy/issues"
   },
   "homepage": "https://github.com/SamKirkland/ftp-deploy",
-  "directories": {
-    "lib": "lib"
-  }
+  "files": [
+    "dist"
+  ]
 }

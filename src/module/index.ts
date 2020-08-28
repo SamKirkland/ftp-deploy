@@ -5,12 +5,15 @@ import fs from "fs";
 import multiMatch from "multiMatch";
 import { Stream } from "stream";
 import { FTPError, FTPResponse } from "basic-ftp";
-import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments, currentVersion, IFtpDeployArgumentsWithDefaults, DiffResult } from "./types";
-import { HashDiff } from "./HashDiff";
-import { pluralize, Timings, Logger, ILogger } from "./utilities";
+import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments, currentVersion, IFtpDeployArgumentsWithDefaults, DiffResult } from "../types";
+import { HashDiff } from "../HashDiff";
+import { pluralize, Timings, Logger, ILogger } from "../utilities";
 import prettyBytes from "pretty-bytes";
-import { prettyError } from "./errorHandling";
+import { prettyError } from "../errorHandling";
 
+/**
+ * Default excludes, ignores all git files and the node_modules folder
+ */
 export const excludeDefaults = [".git*", ".git*/**", "node_modules/**", "node_modules/**/*"];
 
 async function fileHash(filename: string, algorithm: "md5" | "sha1" | "sha256" | "sha512"): Promise<string> {
@@ -237,7 +240,7 @@ async function removeFolder(client: ftp.Client, folderPath: string, logger: ILog
   // navigate back to the root folder
   await upDir(client, path.folders?.length);
 
-  logger.info(`  completed`);
+  logger.debug(`  completed`);
 }
 
 async function removeFile(client: ftp.Client, filePath: string, logger: ILogger): Promise<void> {
@@ -276,7 +279,7 @@ async function removeFile(client: ftp.Client, filePath: string, logger: ILogger)
   // navigate back to the root folder
   await upDir(client, path.folders?.length);
 
-  logger.info(`  Completed`);
+  logger.debug(`  completed`);
 }
 
 
@@ -316,7 +319,7 @@ async function getServerFiles(client: ftp.Client, logger: ILogger, args: IFtpDep
     logger.debug(`Server dir navigated to (or created)`);
 
     if (args["dangerous-clean-slate"]) {
-      logger.all(`------------------------------------------------------`);
+      logger.all(`----------------------------------------------------------------`);
       logger.all("🗑️ Removing all files on the server because 'dangerous-clean-slate' was set, this will make the deployment very slow...");
       await client.clearWorkingDir();
       logger.all("Clear complete");
@@ -325,13 +328,13 @@ async function getServerFiles(client: ftp.Client, logger: ILogger, args: IFtpDep
     }
 
     const serverFiles = await downloadFileList(client, args["state-name"]);
-    logger.all(`------------------------------------------------------`);
+    logger.all(`----------------------------------------------------------------`);
     logger.all(`Last published on 📅 ${new Date(serverFiles.generatedTime).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "numeric" })}`);
 
     return serverFiles;
   }
   catch (e) {
-    logger.all(`------------------------------------------------------`);
+    logger.all(`----------------------------------------------------------------`);
     logger.all(`No file exists on the server "${args["state-name"]}" - this much be your first publish! 🎉`);
     logger.all(`The first publish will take a while... but once the initial sync is done only differences are published!`);
     logger.all(`If you get this message and its NOT your first publish, something is wrong.`);
@@ -368,10 +371,10 @@ function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDeployArg
 async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: ILogger, args: IFtpDeployArgumentsWithDefaults): Promise<any> {
   const totalCount = diffs.delete.length + diffs.upload.length + diffs.replace.length;
 
-  logger.all(`------------------------------------------------------`);
+  logger.all(`----------------------------------------------------------------`);
   logger.all(`Making changes to ${totalCount} ${pluralize(totalCount, "file", "files")} to sync server state`);
   logger.all(`Uploading: ${prettyBytes(diffs.sizeUpload)} -- Deleting: ${prettyBytes(diffs.sizeDelete)} -- Replacing: ${prettyBytes(diffs.sizeReplace)}`);
-  logger.all(`------------------------------------------------------`);
+  logger.all(`----------------------------------------------------------------`);
 
   // create new folders
   for (const file of diffs.upload.filter(item => item.type === "folder")) {
@@ -399,11 +402,10 @@ async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: 
     await removeFolder(client, file.name, logger);
   }
 
-  logger.all(`------------------------------------------------------`);
+  logger.all(`----------------------------------------------------------------`);
   logger.all(`🎉 Sync complete. Saving current server state to "${args["state-name"]}"`);
   await client.uploadFrom(args["state-name"], args["state-name"]);
 }
-
 
 export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
   const args = getDefaultSettings(deployArgs);
@@ -414,11 +416,12 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
 
   // header
   // todo allow swapping out library/version text based on if we are using action
-  logger.all(`------------------------------------------------------`);
+  logger.all(`----------------------------------------------------------------`);
   logger.all(`🚀 Thanks for using ftp-deploy version ${currentVersion}. Let's deploy some stuff!   `);
-  logger.all(`------------------------------------------------------`);
+  logger.all(`----------------------------------------------------------------`);
   logger.all(`If you found this project helpful, please support it`);
   logger.all(`by giving it a ⭐ on Github --> https://github.com/SamKirkland/FTP-Deploy-Action`);
+  logger.all(`or add a badge 🏷️ to your projects readme --> https://github.com/SamKirkland/FTP-Deploy-Action#badge`);
 
   timings.start("hash");
   const localFiles = await getLocalFiles(args);
@@ -483,11 +486,11 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
   const uploadSpeed = prettyBytes(totalBytesUploaded / (timings.getTime("upload") / 1000));
 
   // footer
-  logger.all(`------------------------------------------------------`);
+  logger.all(`----------------------------------------------------------------`);
   logger.all(`Time spent hashing:               ${timings.getTimeFormatted("hash")}`);
   logger.all(`Time spent connecting to server:  ${timings.getTimeFormatted("connecting")}`);
   logger.all(`Time spent deploying:             ${timings.getTimeFormatted("upload")} (${uploadSpeed}/second)`);
-  logger.all(`------------------------------------------------------`);
+  logger.all(`----------------------------------------------------------------`);
   logger.all(`Total time:                       ${timings.getTimeFormatted("total")}`);
-  logger.all(`------------------------------------------------------`);
+  logger.all(`----------------------------------------------------------------`);
 }

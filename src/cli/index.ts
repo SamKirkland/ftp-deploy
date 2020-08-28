@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 
-import { deploy, excludeDefaults } from "./module";
+import { deploy, excludeDefaults } from "../module";
 import yargs from "yargs";
 
 const argv = yargs.options({
