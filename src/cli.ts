@@ -1,7 +1,9 @@
 #! /usr/bin/env node
 
-import { deploy, excludeDefaults } from "../module";
+import { deploy, excludeDefaults } from "./module";
 import yargs from "yargs";
+
+type LogLevel = "warn" | "info" | "debug" | undefined;
 
 const argv = yargs.options({
     "server": { type: "string", demandOption: true },
@@ -16,6 +18,7 @@ const argv = yargs.options({
     "include": { type: "array", default: [], description: "An array of glob patterns, these files will always be included in the publish/delete process - even if no change occurred" },
     "exclude": { type: "array", default: excludeDefaults, description: "An array of glob patterns, these files will not be included in the publish/delete process" },
     "log-level": { choices: ["warn", "info", "debug"], default: "info", description: "How much information should print. warn=only important info, info=warn+file changes, debug=print everything the script is doing" },
+    "security": { choices: ["strict", "loose"], default: "loose", description: "" }
 })
     .example("$0 --server ftp://samkirkland.com --username user --password pass", "")
     .help("help")
@@ -24,7 +27,7 @@ const argv = yargs.options({
 
 
 async function runScript() {
-    await deploy(argv);
+    await deploy(argv as any);
 }
 
 

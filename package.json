@@ -1,11 +1,11 @@
 {
   "name": "@samkirkland/ftp-deploy",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": false,
   "description": "Deploy files to a ftp server",
-  "main": "./dist/module/index.js",
+  "main": "./dist/module/module.js",
   "bin": {
-    "ftp-deploy": "./dist/cli/index.js"
+    "ftp-deploy": "./dist/cli/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -13,8 +13,8 @@
     "run": "ts-node-dev --respawn -- ./lib/main.js --ftp-server=test",
     "lint": "eslint src/**/*.ts",
     "pack": "npm run pack-module && npm run pack-cli",
-    "pack-module": "ncc build src/module/index.ts --out dist/module",
-    "pack-cli": "ncc build src/cli/index.ts --out dist/cli",
+    "pack-module": "ncc build src/module.ts --out dist/module/",
+    "pack-cli": "ncc build src/cli.ts --out dist/cli/",
     "test": "jest"
   },
   "repository": {

@@ -59,7 +59,7 @@ export interface IFtpDeployArguments {
      * How much information should print. warn=only important info, info=warn+file changes, debug=print everything the script is doing
      * @default "info"
      */
-    "log-level"?: string;
+    "log-level"?: "warn" | "info" | "debug";
 
     /**
      * When using protocol "ftps" or "ftps-legacy" should the cert name need to match exactly?
@@ -84,7 +84,7 @@ export interface IFtpDeployArgumentsWithDefaults {
     "dangerous-clean-slate": boolean;
     include: string[];
     exclude: string[];
-    "log-level": string;
+    "log-level": "warn" | "info" | "debug";
     security: "strict" | "loose";
 }
 

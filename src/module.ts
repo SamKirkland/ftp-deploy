@@ -5,11 +5,11 @@ import fs from "fs";
 import multiMatch from "multiMatch";
 import { Stream } from "stream";
 import { FTPError, FTPResponse } from "basic-ftp";
-import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments, currentVersion, IFtpDeployArgumentsWithDefaults, DiffResult } from "../types";
-import { HashDiff } from "../HashDiff";
-import { pluralize, Timings, Logger, ILogger } from "../utilities";
+import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments, currentVersion, IFtpDeployArgumentsWithDefaults, DiffResult } from "./types";
+import { HashDiff } from "./HashDiff";
+import { pluralize, Timings, Logger, ILogger } from "./utilities";
 import prettyBytes from "pretty-bytes";
-import { prettyError } from "../errorHandling";
+import { prettyError } from "./errorHandling";
 
 /**
  * Default excludes, ignores all git files and the node_modules folder
