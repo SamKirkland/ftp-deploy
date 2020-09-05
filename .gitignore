@@ -82,6 +82,7 @@ typings/
 .nuxt
 lib
 dist
+.ftp-deploy-sync-state.json
 
 # Gatsby files
 .cache/

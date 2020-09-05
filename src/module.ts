@@ -327,7 +327,7 @@ async function getServerFiles(client: ftp.Client, logger: ILogger, args: IFtpDep
       throw new Error("nope");
     }
 
-    const serverFiles = await downloadFileList(client, args["state-name"]);
+    const serverFiles = await downloadFileList(client, args["server-dir"] + args["state-name"]);
     logger.all(`----------------------------------------------------------------`);
     logger.all(`Last published on 📅 ${new Date(serverFiles.generatedTime).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "numeric" })}`);
 
@@ -335,7 +335,7 @@ async function getServerFiles(client: ftp.Client, logger: ILogger, args: IFtpDep
   }
   catch (e) {
     logger.all(`----------------------------------------------------------------`);
-    logger.all(`No file exists on the server "${args["state-name"]}" - this much be your first publish! 🎉`);
+    logger.all(`No file exists on the server "${args["server-dir"] + args["state-name"]}" - this much be your first publish! 🎉`);
     logger.all(`The first publish will take a while... but once the initial sync is done only differences are published!`);
     logger.all(`If you get this message and its NOT your first publish, something is wrong.`);
 
@@ -350,6 +350,17 @@ async function getServerFiles(client: ftp.Client, logger: ILogger, args: IFtpDep
 }
 
 function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDeployArgumentsWithDefaults {
+  if (withoutDefaults["local-dir"] !== undefined) {
+    if (!withoutDefaults["local-dir"].endsWith("/")) {
+      throw new Error("local-dir should be a folder (must end with /)");
+    }
+  }
+  if (withoutDefaults["server-dir"] !== undefined) {
+    if (!withoutDefaults["server-dir"].endsWith("/")) {
+      throw new Error("server-dir should be a folder (must end with /)");
+    }
+  }
+
   return {
     "server": withoutDefaults.server,
     "username": withoutDefaults.username,
@@ -403,8 +414,8 @@ async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: 
   }
 
   logger.all(`----------------------------------------------------------------`);
-  logger.all(`🎉 Sync complete. Saving current server state to "${args["state-name"]}"`);
-  await client.uploadFrom(args["state-name"], args["state-name"]);
+  logger.all(`🎉 Sync complete. Saving current server state to "${args["server-dir"] + args["state-name"]}"`);
+  await client.uploadFrom(args["state-name"], args["server-dir"] + args["state-name"]);
 }
 
 export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
