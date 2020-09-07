@@ -1,20 +1,16 @@
 {
   "name": "@samkirkland/ftp-deploy",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "private": false,
   "description": "Deploy files to a ftp server",
-  "main": "./dist/module/module.js",
+  "main": "dist/module.js",
   "bin": {
-    "ftp-deploy": "./dist/cli/cli.js"
+    "ftp-deploy": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
-    "deploy": "tsc && node ./lib/cli.js --server wwwssr16.supercp.com --protocol ftps --secure strict --username \"ftp-deploy@samkirkland.com\" --password \"actualPasswordHere\" --exclude lib/** --exclude dist/** --exclude .git* --exclude .git*/** --exclude node_modules/** --exclude node_modules/**/*",
-    "run": "ts-node-dev --respawn -- ./lib/main.js --ftp-server=test",
+    "deploy": "tsc && node ./dist/cli.js ---server wwwssr16.supercp.com --protocol ftps --secure strict --username \"ftp-deploy@samkirkland.com\" --password \"actualPasswordHere\" --exclude --exclude dist/** --exclude .git* --exclude .git*/** --exclude node_modules/** --exclude node_modules/**/*",
     "lint": "eslint src/**/*.ts",
-    "pack": "npm run pack-module && npm run pack-cli",
-    "pack-module": "ncc build src/module.ts --out dist/module/",
-    "pack-cli": "ncc build src/cli.ts --out dist/cli/",
     "test": "jest"
   },
   "repository": {
@@ -45,9 +41,9 @@
     "@types/yargs": "^15.0.5",
     "@typescript-eslint/eslint-plugin": "^4.0.1",
     "@typescript-eslint/parser": "^4.0.1",
-    "@vercel/ncc": "^0.24.0",
     "eslint": "^7.8.1",
     "eslint-plugin-jest": "^24.0.0",
+    "ftp-srv": "^4.3.4",
     "jest": "^26.4.2",
     "js-yaml": "^3.14.0",
     "ts-jest": "^26.3.0",

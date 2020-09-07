@@ -157,6 +157,14 @@ async function upDir(client: ftp.Client, dirCount: number | null | undefined): P
   }
 }
 
+async function ensureDir(client: ftp.Client, logger: ILogger, timings: Timings, folder: string): Promise<void> {
+  timings.start("changingDir");
+  logger.debug(`  changing dir to ${folder}`);
+  await client.ensureDir(folder);
+  logger.debug(`  dir changed`);
+  timings.stop("changingDir");
+}
+
 /**
  * 
  * @param client ftp client
@@ -164,35 +172,16 @@ async function upDir(client: ftp.Client, dirCount: number | null | undefined): P
  * Note working dir is modified and NOT reset after upload
  * For now we are going to reset it - but this will be removed for performance
  */
-async function uploadFile(client: ftp.Client, filePath: string, logger: ILogger, type: "upload" | "replace" = "upload"): Promise<void> {
+async function uploadFile(client: ftp.Client, filePath: string, logger: ILogger, timings: Timings, type: "upload" | "replace" = "upload"): Promise<void> {
   const typePresent = type === "upload" ? "uploading" : "replacing";
   const typePast = type === "upload" ? "uploaded" : "replaced";
   logger.all(`${typePresent} "${filePath}"`);
 
-  const path = getFileBreadcrumbs(filePath);
-
-  if (path.folders === null) {
-    logger.debug(`  no need to change dir`);
-  }
-  else {
-    logger.debug(`  changing dir to ${path.folders.join("/")}`);
-    await client.ensureDir(path.folders.join("/"));
-    logger.debug(`  dir changed`);
-  }
-
-  if (path.file !== null) {
-    logger.debug(`  ${type} started`);
-    await client.uploadFrom(filePath, path.file);
-    logger.debug(`  file ${typePast}`);
-  }
-
-  // navigate back to the root folder
-  await upDir(client, path.folders?.length);
-
-  logger.debug(`  completed`);
+  await client.uploadFrom(filePath, filePath);
+  logger.debug(`  file ${typePast}`);
 }
 
-async function createFolder(client: ftp.Client, folderPath: string, logger: ILogger): Promise<void> {
+async function createFolder(client: ftp.Client, folderPath: string, logger: ILogger, timings: Timings): Promise<void> {
   logger.all(`creating folder "${folderPath + "/"}"`);
 
   const path = getFileBreadcrumbs(folderPath + "/");
@@ -201,8 +190,7 @@ async function createFolder(client: ftp.Client, folderPath: string, logger: ILog
     logger.debug(`  no need to change dir`);
   }
   else {
-    logger.debug(`  creating folder ${path.folders.join("/")}`);
-    await client.ensureDir(path.folders.join("/"));
+    await ensureDir(client, logger, timings, path.folders.join("/"));
   }
 
   // navigate back to the root folder
@@ -246,38 +234,21 @@ async function removeFolder(client: ftp.Client, folderPath: string, logger: ILog
 async function removeFile(client: ftp.Client, filePath: string, logger: ILogger): Promise<void> {
   logger.all(`removing ${filePath}...`);
 
-  const path = getFileBreadcrumbs(filePath);
-
-  if (path.folders === null) {
-    logger.debug(`  no need to change dir`);
+  try {
+    await client.remove(filePath);
+    logger.debug(`  file removed`);
   }
-  else {
-    logger.debug(`  changing dir to ${path.folders.join("/")}`);
-    await client.ensureDir(path.folders.join("/"));
-    logger.debug(`  dir changed`);
-  }
+  catch (e) {
+    let error = e as FTPResponse;
 
-  if (path.file !== null) {
-    try {
-      logger.debug(`  removing file ${path.file}`);
-      await client.remove(path.file);
-      logger.debug(`  file removed`);
+    if (error.code === ErrorCode.FileNotFoundOrNoAccess) {
+      logger.info(`  could not remove file. It doesn't exist!`);
     }
-    catch (e) {
-      let error = e as FTPResponse;
-
-      if (error.code === ErrorCode.FileNotFoundOrNoAccess) {
-        logger.info(`  could not remove file. It doesn't exist!`);
-      }
-      else {
-        // unknown error
-        throw error;
-      }
+    else {
+      // unknown error
+      throw error;
     }
   }
-
-  // navigate back to the root folder
-  await upDir(client, path.folders?.length);
 
   logger.debug(`  completed`);
 }
@@ -312,11 +283,9 @@ async function connect(client: ftp.Client, args: IFtpDeployArgumentsWithDefaults
   });
 }
 
-async function getServerFiles(client: ftp.Client, logger: ILogger, args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
+async function getServerFiles(client: ftp.Client, logger: ILogger, timings: Timings, args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
   try {
-    logger.debug(`Navigating to server dir - ${args["server-dir"]}`);
-    await client.ensureDir(args["server-dir"]);
-    logger.debug(`Server dir navigated to (or created)`);
+    await ensureDir(client, logger, timings, args["server-dir"]);
 
     if (args["dangerous-clean-slate"]) {
       logger.all(`----------------------------------------------------------------`);
@@ -327,7 +296,7 @@ async function getServerFiles(client: ftp.Client, logger: ILogger, args: IFtpDep
       throw new Error("nope");
     }
 
-    const serverFiles = await downloadFileList(client, args["server-dir"] + args["state-name"]);
+    const serverFiles = await downloadFileList(client, args["state-name"]);
     logger.all(`----------------------------------------------------------------`);
     logger.all(`Last published on 📅 ${new Date(serverFiles.generatedTime).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "numeric" })}`);
 
@@ -379,7 +348,7 @@ function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDeployArg
   };
 }
 
-async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: ILogger, args: IFtpDeployArgumentsWithDefaults): Promise<any> {
+async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: ILogger, timings: Timings, args: IFtpDeployArgumentsWithDefaults): Promise<any> {
   const totalCount = diffs.delete.length + diffs.upload.length + diffs.replace.length;
 
   logger.all(`----------------------------------------------------------------`);
@@ -389,18 +358,18 @@ async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: 
 
   // create new folders
   for (const file of diffs.upload.filter(item => item.type === "folder")) {
-    await createFolder(client, file.name, logger);
+    await createFolder(client, file.name, logger, timings);
   }
 
   // upload new files
   for (const file of diffs.upload.filter(item => item.type === "file").filter(item => item.name !== args["state-name"])) {
-    await uploadFile(client, file.name, logger);
+    await uploadFile(client, file.name, logger, timings);
   }
 
   // replace new files
   for (const file of diffs.replace.filter(item => item.type === "file").filter(item => item.name !== args["state-name"])) {
     // note: FTP will replace old files with new files. We run replacements after uploads to limit downtime
-    await uploadFile(client, file.name, logger, "replace");
+    await uploadFile(client, file.name, logger, timings, "replace");
   }
 
   // delete old files
@@ -415,7 +384,7 @@ async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: 
 
   logger.all(`----------------------------------------------------------------`);
   logger.all(`🎉 Sync complete. Saving current server state to "${args["server-dir"] + args["state-name"]}"`);
-  await client.uploadFrom(args["state-name"], args["server-dir"] + args["state-name"]);
+  await client.uploadFrom(args["state-name"], args["state-name"]);
 }
 
 export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
@@ -436,7 +405,7 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
 
   timings.start("hash");
   const localFiles = await getLocalFiles(args);
-  timings.end("hash");
+  timings.stop("hash");
 
   createLocalState(localFiles, logger, args);
 
@@ -447,10 +416,10 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
   try {
     timings.start("connecting");
     await connect(client, args);
-    timings.end("connecting");
+    timings.stop("connecting");
 
     try {
-      const serverFiles = await getServerFiles(client, logger, args);
+      const serverFiles = await getServerFiles(client, logger, timings, args);
 
       const diffTool: IDiff = new HashDiff();
       const diffs = diffTool.getDiffs(localFiles, serverFiles, logger);
@@ -459,7 +428,7 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
 
       timings.start("upload");
       try {
-        await syncLocalToServer(client, diffs, logger, args);
+        await syncLocalToServer(client, diffs, logger, timings, args);
       }
       catch (e) {
         if (e.code === ErrorCode.FileNameNotAllowed) {
@@ -472,7 +441,7 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
         process.exit();
       }
       finally {
-        timings.end("upload");
+        timings.stop("upload");
       }
 
     }
@@ -490,7 +459,7 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
   }
   finally {
     client.close();
-    timings.end("total");
+    timings.stop("total");
   }
 
 
@@ -501,6 +470,7 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
   logger.all(`Time spent hashing:               ${timings.getTimeFormatted("hash")}`);
   logger.all(`Time spent connecting to server:  ${timings.getTimeFormatted("connecting")}`);
   logger.all(`Time spent deploying:             ${timings.getTimeFormatted("upload")} (${uploadSpeed}/second)`);
+  logger.all(`  - changing dirs:                ${timings.getTimeFormatted("changingDir")}`);
   logger.all(`----------------------------------------------------------------`);
   logger.all(`Total time:                       ${timings.getTimeFormatted("total")}`);
   logger.all(`----------------------------------------------------------------`);

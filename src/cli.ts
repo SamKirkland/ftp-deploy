@@ -3,8 +3,6 @@
 import { deploy, excludeDefaults } from "./module";
 import yargs from "yargs";
 
-type LogLevel = "warn" | "info" | "debug" | undefined;
-
 const argv = yargs.options({
     "server": { type: "string", demandOption: true },
     "username": { type: "string", demandOption: true },

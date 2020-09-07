@@ -49,18 +49,21 @@ interface ITimers {
     [key: string]: Timer | undefined;
 }
 
-type AvailableTimers = "connecting" | "hash" | "upload" | "total";
+type AvailableTimers = "connecting" | "hash" | "upload" | "total" | "changingDir";
 
 export class Timings {
     private timers: ITimers = {};
 
     public start(type: AvailableTimers): void {
-        this.timers[type] = new Timer();
+        if (this.timers[type] === undefined) {
+            this.timers[type] = new Timer();
+        }
+
         this.timers[type]!.start();
     }
 
-    public end(type: AvailableTimers): void {
-        this.timers[type]!.end();
+    public stop(type: AvailableTimers): void {
+        this.timers[type]!.stop();
     }
 
     public getTime(type: AvailableTimers): number {
@@ -82,23 +85,42 @@ export class Timings {
     }
 }
 
+/**
+ * first number is seconds
+ * second number is nanoseconds
+ */
+type HRTime = [number, number];
+
 export class Timer {
-    private startTime: number | null = null;
-    private endTime: number | null = null;
+    private totalTime: HRTime | null = null;
+    private startTime: HRTime | null = null;
+    private endTime: HRTime | null = null;
 
     start() {
-        this.startTime = new Date().getTime();
+        this.startTime = process.hrtime();
     }
 
-    end() {
-        this.endTime = new Date().getTime();
+    stop() {
+        if (this.startTime === null) {
+            throw new Error("Called .stop() before calling .start()");
+        }
+
+        this.endTime = process.hrtime(this.startTime);
+
+        const currentSeconds = this.totalTime === null ? 0 : this.totalTime[0];
+        const currentNS = this.totalTime === null ? 0 : this.totalTime[1];
+
+        this.totalTime = [
+            currentSeconds + this.endTime[0],
+            currentNS + this.endTime[1]
+        ];
     }
 
     get time() {
-        if (this.startTime === null || this.endTime === null) {
+        if (this.totalTime === null) {
             return null;
         }
 
-        return this.endTime - this.startTime;
+        return (this.totalTime[0] * 1000) + (this.totalTime[1] / 1000000);
     }
 }
