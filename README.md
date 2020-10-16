@@ -10,7 +10,7 @@ After the initial sync only differences and synced, making deployments super fas
 ---
 
 ## How to Run
-#### Option 1 - Command Line
+#### Option 1 - Run via command line
 - Install the npm package using `npm install @samkirkland/ftp-deploy --only=dev`
 - Run via command line `npm run ftp-deploy --server ftp.samkirkland.com --username test@samkirkland.com --password \"CrazyUniquePassword&%123\"`
 
@@ -27,23 +27,23 @@ Example of `package.json`:
 }
 ```
 
-#### Option 2 - Code
+#### Option 2 - Run programmatically
 - Install the npm package using `npm install @samkirkland/ftp-deploy --only=dev`
-- Import the code and use it via normal node modules
+- Import the code and use it in your code
 
 Example of `myCustomDeployment.js`:
 ```javascript
 import { deploy, excludeDefaults } from "@samkirkland/ftp-deploy";
 
 async function deployMyCode() {
-  console.log("Deploy started");
+  console.log("🚚 Deploy started");
   await deploy({
     server: "ftp.samkirkland.com",
     username: "username@samkirkland.com",
     password: `CrazyUniquePassword&%123`, // note: I'm using backticks here ` so I don't have to escape quotes
     exclude: [...excludeDefaults, "dontDeployThisFolder/**"] // excludeDefaults will exclude .git files and node_modules
   });
-  console.log("Deploy done!");
+  console.log("🚀 Deploy done!");
 }
 
 deployMyCode();
@@ -59,16 +59,16 @@ If you use github as source control you can automatically re-deploy your site on
 
 | Key Name                  | Required | Example                    | Default Value                                            | Description                                                                                                                                                        |
 |---------------------------|----------|----------------------------|----------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--server`                | Yes      | `ftp.samkirkland.com`      |                                                          | Deployment destination server. Formatted as `domain.com:port`. Port is optional, when not specified it will default to 22                                          |
+| `--server`                | Yes      | `ftp.samkirkland.com`      |                                                          | Deployment destination server                                                                                                                                      |
 | `--username`              | Yes      | `username@samkirkland.com` |                                                          | ftp username                                                                                                                                                       |
 | `--password`              | Yes      | `CrazyUniquePassword&%123` |                                                          | ftp password, be sure to escape quotes and spaces                                                                                                                  |
 | `--port`                  | No       | `990`                      | `21`                                                     | Server port to connect to (read your web hosts docs)                                                                                                               |
 | `--protocol`              | No       | `ftps`                     | `ftp`                                                    | `ftp`: provides no encryption, `ftps`: full encryption newest standard (aka "explicit" ftps), `ftps-legacy`: full encryption legacy standard (aka "implicit" ftps) |
 | `--local-dir`             | No       | `./myFolderToPublish/`     | `./`                                                     | Path to upload to on the server, must end with trailing slash `/`                                                                                                  |
 | `--server-dir`            | No       | `ftp.samkirkland.com`      | `./`                                                     | Folder to upload from, must end with trailing slash `/`                                                                                                            |
-| `--state-name`            | No       | `folder/.sync-state.json`  | `.ftp-deploy-sync-state.json`                            | ftp-deploy uses this folder to only publish differences. If you don't like the name or location you can customize it                                               |
+| `--state-name`            | No       | `folder/.sync-state.json`  | `.ftp-deploy-sync-state.json`                            | ftp-deploy uses this file to track what's been deployed already, so only differences can be published. If you don't like the name or location you can customize it |
 | `--dry-run`               | No       | `true`                     | `false`                                                  | Prints which modifications will be made with current config options, but doesn't actually make any changes                                                         |
-| `--dangerous-clean-slate` | No       | `true`                     | `false`                                                  | Deletes ALL contents of server-dir, even items in excluded with `--exclude` argument                                                                               |
-| `--include`               | No       |                            | ``                                                       | An array of glob patterns, these files will always be included in the publish/delete process - even if no change occurred                                          |
+| `--dangerous-clean-slate` | No       | `true`                     | `false`                                                  | Deletes ALL contents of server-dir, even items marked as `--exclude` argument                                                                                      |
 | `--exclude`               | No       | `nuclearLaunchCodes.txt`   | `.git*` `.git*/**` `node_modules/**` `node_modules/**/*` | An array of glob patterns, these files will not be included in the publish/delete process                                                                          |
-| `--log-level`             | No       | `info`                     | `info`                                                   | `warn`: only important logs, `info`: default, important & progress info, `debug`: log everything for debugging                                                     |
+| `--log-level`             | No       | `info`                     | `info`                                                   | `minimal`: only important info, `standard`: important info and basic file changes, `verbose`: print everything the script is doing                                 |
+| `--security`              | No       | `strict`                   | `loose`                                                  | `strict`: Reject any connection which is not authorized with the list of supplied CAs. `loose`: Allow connection even when the domain is not in certificate        |

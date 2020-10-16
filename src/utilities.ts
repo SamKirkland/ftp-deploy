@@ -1,37 +1,31 @@
 import prettyMilliseconds from "pretty-ms";
+import { ErrorCode } from "./types";
 
 export interface ILogger {
     all(...data: any[]): void;
-    warn(...data: any[]): void;
-    info(...data: any[]): void;
-    debug(...data: any[]): void;
+    standard(...data: any[]): void;
+    verbose(...data: any[]): void;
 }
 
 export class Logger implements ILogger {
-    constructor(level: "warn" | "info" | "debug") {
-        this.level = level ?? "info";
+    constructor(level: "minimal" | "standard" | "verbose") {
+        this.level = level;
     }
 
-    private level: "warn" | "info" | "debug";
+    private level: "minimal" | "standard" | "verbose";
 
     public all(...data: any[]): void {
         console.log(...data);
     }
 
-    public warn(...data: any[]): void {
-        if (this.level === "debug") { return; }
+    public standard(...data: any[]): void {
+        if (this.level === "minimal") { return; }
 
         console.log(...data);
     }
 
-    public info(...data: any[]): void {
-        if (this.level === "warn") { return; }
-
-        console.log(...data);
-    }
-
-    public debug(...data: any[]): void {
-        if (this.level !== "debug") { return; }
+    public verbose(...data: any[]): void {
+        if (this.level !== "verbose") { return; }
 
         console.log(...data);
     }
@@ -43,6 +37,35 @@ export function pluralize(count: number, singular: string, plural: string) {
     }
 
     return plural;
+}
+
+/**
+ * retry a request
+ * 
+ * @example retryRequest(logger, async () => await item());
+ */
+export async function retryRequest<T>(logger: ILogger, callback: () => Promise<T>): Promise<T> {
+    try {
+        return await callback();
+    }
+    catch (e) {
+        if (e.code >= 400 && e.code <= 499) {
+            logger.standard("400 level error from server when performing action - retrying...");
+            logger.standard(e);
+
+            if (e.code === ErrorCode.ConnectionClosed) {
+                logger.all("Connection closed. This library does not currently handle reconnects");
+                // await global.reconnect();
+                // todo reset current working dir
+                throw e;
+            }
+
+            return await callback();
+        }
+        else {
+            throw e;
+        }
+    }
 }
 
 interface ITimers {

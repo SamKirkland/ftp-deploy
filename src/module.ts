@@ -3,11 +3,10 @@ import readdir, { Stats } from "@jsdevtools/readdir-enhanced";
 import crypto from "crypto";
 import fs from "fs";
 import multiMatch from "multiMatch";
-import { Stream } from "stream";
 import { FTPError, FTPResponse } from "basic-ftp";
 import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments, currentVersion, IFtpDeployArgumentsWithDefaults, DiffResult } from "./types";
 import { HashDiff } from "./HashDiff";
-import { pluralize, Timings, Logger, ILogger } from "./utilities";
+import { pluralize, Timings, Logger, ILogger, retryRequest } from "./utilities";
 import prettyBytes from "pretty-bytes";
 import { prettyError } from "./errorHandling";
 
@@ -37,22 +36,13 @@ async function fileHash(filename: string, algorithm: "md5" | "sha1" | "sha256" |
   });
 }
 
-// Excludes takes precedence over includes
-function includeExcludeFilter(stat: Stats, args: IFtpDeployArgumentsWithDefaults) {
+function applyExcludeFilter(stat: Stats, args: IFtpDeployArgumentsWithDefaults) {
   // match exclude, return immediatley
-  if (args.exclude !== null) {
-    const exclude = multiMatch(stat.path, args.exclude, { matchBase: true, dot: true });
+  if (args.exclude.length > 0) {
+    const excludeMatch = multiMatch(stat.path, args.exclude, { matchBase: true, dot: true });
 
-    if (exclude.length > 0) {
+    if (excludeMatch.length > 0) {
       return false;
-    }
-  }
-
-  if (args.include !== null) {
-    // matches include - return immediatley
-    const include = multiMatch(stat.path, args.include, { matchBase: true, dot: true });
-    if (include.length > 0) {
-      return true;
     }
   }
 
@@ -60,7 +50,7 @@ function includeExcludeFilter(stat: Stats, args: IFtpDeployArgumentsWithDefaults
 }
 
 async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
-  const files = await readdir.async(args["local-dir"], { deep: true, stats: true, sep: "/", filter: (stat) => includeExcludeFilter(stat, args) });
+  const files = await readdir.async(args["local-dir"], { deep: true, stats: true, sep: "/", filter: (stat) => applyExcludeFilter(stat, args) });
   const records: Record[] = [];
 
   for (let stat of files) {
@@ -86,7 +76,7 @@ async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFi
     }
 
     if (stat.isSymbolicLink()) {
-      console.warn("Currently unable to handle symbolic links");
+      console.warn("This script is currently unable to handle symbolic links - please add a feature request if you need this");
     }
   }
 
@@ -98,31 +88,19 @@ async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFi
   };
 }
 
-async function downloadFileList(client: ftp.Client, path: string): Promise<IFileList> {
-  return new Promise(async (resolve, reject) => {
-    const downloadStream = new Stream.Writable();
-    const chunks: any[] = [];
+async function downloadFileList(client: ftp.Client, logger: ILogger, path: string): Promise<IFileList> {
+  // note: originally this was using a writable stream instead of a buffer file
+  // basic-ftp doesn't seam to close the connection when using steams over some ftps connections. This appears to be dependent on the ftp server
+  const tempFileNameHack = ".ftp-deploy-sync-server-state-buffer-file---delete.json";
 
-    downloadStream._write = (chunk: any, encoding: any, next: any) => {
-      chunks.push(chunk);
-      next();
-    }
+  await retryRequest(logger, async () => await client.downloadTo(tempFileNameHack, path));
 
-    downloadStream.on("error", reject);
-    downloadStream.on("finish", () => {
-      const file = Buffer.concat(chunks).toString("utf8");
-      try {
-        resolve(JSON.parse(file));
-      }
-      catch (e) {
-        reject(e);
-      }
-    });
+  const fileAsString = fs.readFileSync(tempFileNameHack, { encoding: "utf-8" });
+  const fileAsObject = JSON.parse(fileAsString) as IFileList;
 
-    client.downloadTo(downloadStream, path).catch((reason: any) => {
-      reject(`Can't open due to: "${reason}"`)
-    });
-  });
+  fs.unlinkSync(tempFileNameHack);
+
+  return fileAsObject;
 }
 
 
@@ -146,22 +124,24 @@ function getFileBreadcrumbs(fullPath: string): IFilePath {
 /**
  * Navigates up {dirCount} number of directories from the current working dir
  */
-async function upDir(client: ftp.Client, dirCount: number | null | undefined): Promise<void> {
+async function upDir(client: ftp.Client, logger: ILogger, dirCount: number | null | undefined): Promise<void> {
   if (typeof dirCount !== "number") {
     return;
   }
 
   // navigate back to the starting folder
   for (let i = 0; i < dirCount; i++) {
-    await client.cdup();
+    await retryRequest(logger, async () => await client.cdup());
   }
 }
 
 async function ensureDir(client: ftp.Client, logger: ILogger, timings: Timings, folder: string): Promise<void> {
   timings.start("changingDir");
-  logger.debug(`  changing dir to ${folder}`);
-  await client.ensureDir(folder);
-  logger.debug(`  dir changed`);
+  logger.verbose(`  changing dir to ${folder}`);
+
+  await retryRequest(logger, async () => await client.ensureDir(folder));
+
+  logger.verbose(`  dir changed`);
   timings.stop("changingDir");
 }
 
@@ -172,13 +152,14 @@ async function ensureDir(client: ftp.Client, logger: ILogger, timings: Timings, 
  * Note working dir is modified and NOT reset after upload
  * For now we are going to reset it - but this will be removed for performance
  */
-async function uploadFile(client: ftp.Client, filePath: string, logger: ILogger, timings: Timings, type: "upload" | "replace" = "upload"): Promise<void> {
+async function uploadFile(client: ftp.Client, basePath: string, filePath: string, logger: ILogger, type: "upload" | "replace" = "upload"): Promise<void> {
   const typePresent = type === "upload" ? "uploading" : "replacing";
   const typePast = type === "upload" ? "uploaded" : "replaced";
   logger.all(`${typePresent} "${filePath}"`);
 
-  await client.uploadFrom(filePath, filePath);
-  logger.debug(`  file ${typePast}`);
+  await retryRequest(logger, async () => await client.uploadFrom(basePath + filePath, filePath));
+
+  logger.verbose(`  file ${typePast}`);
 }
 
 async function createFolder(client: ftp.Client, folderPath: string, logger: ILogger, timings: Timings): Promise<void> {
@@ -187,16 +168,16 @@ async function createFolder(client: ftp.Client, folderPath: string, logger: ILog
   const path = getFileBreadcrumbs(folderPath + "/");
 
   if (path.folders === null) {
-    logger.debug(`  no need to change dir`);
+    logger.verbose(`  no need to change dir`);
   }
   else {
     await ensureDir(client, logger, timings, path.folders.join("/"));
   }
 
   // navigate back to the root folder
-  await upDir(client, path.folders?.length);
+  await upDir(client, logger, path.folders?.length);
 
-  logger.debug(`  completed`);
+  logger.verbose(`  completed`);
 }
 
 async function removeFolder(client: ftp.Client, folderPath: string, logger: ILogger): Promise<void> {
@@ -205,18 +186,18 @@ async function removeFolder(client: ftp.Client, folderPath: string, logger: ILog
   const path = getFileBreadcrumbs(folderPath + "/");
 
   if (path.folders === null) {
-    logger.debug(`  no need to change dir`);
+    logger.verbose(`  no need to change dir`);
   }
   else {
     try {
-      logger.debug(`  removing folder "${path.folders.join("/") + "/"}"`);
-      await client.removeDir(path.folders.join("/") + "/");
+      logger.verbose(`  removing folder "${path.folders.join("/") + "/"}"`);
+      await retryRequest(logger, async () => await client.removeDir(path.folders!.join("/") + "/"));
     }
     catch (e) {
       let error = e as FTPResponse;
 
       if (error.code === ErrorCode.FileNotFoundOrNoAccess) {
-        logger.debug(`  could not remove folder. It doesn't exist!`);
+        logger.verbose(`  could not remove folder. It doesn't exist!`);
       }
       else {
         // unknown error
@@ -226,23 +207,23 @@ async function removeFolder(client: ftp.Client, folderPath: string, logger: ILog
   }
 
   // navigate back to the root folder
-  await upDir(client, path.folders?.length);
+  await upDir(client, logger, path.folders?.length);
 
-  logger.debug(`  completed`);
+  logger.verbose(`  completed`);
 }
 
-async function removeFile(client: ftp.Client, filePath: string, logger: ILogger): Promise<void> {
+async function removeFile(client: ftp.Client, basePath: string, filePath: string, logger: ILogger): Promise<void> {
   logger.all(`removing ${filePath}...`);
 
   try {
-    await client.remove(filePath);
-    logger.debug(`  file removed`);
+    await retryRequest(logger, async () => await client.remove(basePath + filePath));
+    logger.verbose(`  file removed`);
   }
   catch (e) {
     let error = e as FTPResponse;
 
     if (error.code === ErrorCode.FileNotFoundOrNoAccess) {
-      logger.info(`  could not remove file. It doesn't exist!`);
+      logger.verbose(`  could not remove file. It doesn't exist!`);
     }
     else {
       // unknown error
@@ -250,17 +231,16 @@ async function removeFile(client: ftp.Client, filePath: string, logger: ILogger)
     }
   }
 
-  logger.debug(`  completed`);
+  logger.verbose(`  completed`);
 }
-
 
 function createLocalState(localFiles: IFileList, logger: ILogger, args: IFtpDeployArgumentsWithDefaults): void {
-  logger.debug(`Creating local state at ${args["local-dir"]}${args["state-name"]}`);
+  logger.verbose(`Creating local state at ${args["local-dir"]}${args["state-name"]}`);
   fs.writeFileSync(`${args["local-dir"]}${args["state-name"]}`, JSON.stringify(localFiles, undefined, 4), { encoding: "utf8" });
-  logger.debug("Local state created");
+  logger.verbose("Local state created");
 }
 
-async function connect(client: ftp.Client, args: IFtpDeployArgumentsWithDefaults) {
+async function connect(client: ftp.Client, args: IFtpDeployArgumentsWithDefaults, logger: ILogger) {
   let secure: boolean | "implicit" = false;
   if (args.protocol === "ftps") {
     secure = true;
@@ -268,6 +248,8 @@ async function connect(client: ftp.Client, args: IFtpDeployArgumentsWithDefaults
   else if (args.protocol === "ftps-legacy") {
     secure = "implicit";
   }
+
+  client.ftp.verbose = args["log-level"] === "verbose";
 
   const rejectUnauthorized = args.security === "loose";
 
@@ -281,6 +263,12 @@ async function connect(client: ftp.Client, args: IFtpDeployArgumentsWithDefaults
       rejectUnauthorized: rejectUnauthorized
     }
   });
+
+  if (args["log-level"] === "verbose") {
+    client.trackProgress(info => {
+      logger.verbose(`${info.type} progress for "${info.name}". Progress: ${info.bytes} bytes of ${info.bytesOverall} bytes`);
+    });
+  }
 }
 
 async function getServerFiles(client: ftp.Client, logger: ILogger, timings: Timings, args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
@@ -296,7 +284,7 @@ async function getServerFiles(client: ftp.Client, logger: ILogger, timings: Timi
       throw new Error("nope");
     }
 
-    const serverFiles = await downloadFileList(client, args["state-name"]);
+    const serverFiles = await downloadFileList(client, logger, args["state-name"]);
     logger.all(`----------------------------------------------------------------`);
     logger.all(`Last published on 📅 ${new Date(serverFiles.generatedTime).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "numeric" })}`);
 
@@ -341,9 +329,8 @@ function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDeployArg
     "state-name": withoutDefaults["state-name"] ?? ".ftp-deploy-sync-state.json",
     "dry-run": withoutDefaults["dry-run"] ?? false,
     "dangerous-clean-slate": withoutDefaults["dangerous-clean-slate"] ?? false,
-    "include": withoutDefaults.include ?? [],
     "exclude": withoutDefaults.exclude ?? excludeDefaults,
-    "log-level": withoutDefaults["log-level"] ?? "info",
+    "log-level": withoutDefaults["log-level"] ?? "standard",
     "security": withoutDefaults.security ?? "loose",
   };
 }
@@ -356,6 +343,8 @@ async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: 
   logger.all(`Uploading: ${prettyBytes(diffs.sizeUpload)} -- Deleting: ${prettyBytes(diffs.sizeDelete)} -- Replacing: ${prettyBytes(diffs.sizeReplace)}`);
   logger.all(`----------------------------------------------------------------`);
 
+  const basePath = args["local-dir"];
+
   // create new folders
   for (const file of diffs.upload.filter(item => item.type === "folder")) {
     await createFolder(client, file.name, logger, timings);
@@ -363,18 +352,18 @@ async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: 
 
   // upload new files
   for (const file of diffs.upload.filter(item => item.type === "file").filter(item => item.name !== args["state-name"])) {
-    await uploadFile(client, file.name, logger, timings);
+    await uploadFile(client, basePath, file.name, logger);
   }
 
   // replace new files
   for (const file of diffs.replace.filter(item => item.type === "file").filter(item => item.name !== args["state-name"])) {
     // note: FTP will replace old files with new files. We run replacements after uploads to limit downtime
-    await uploadFile(client, file.name, logger, timings, "replace");
+    await uploadFile(client, basePath, file.name, logger, "replace");
   }
 
   // delete old files
   for (const file of diffs.delete.filter(item => item.type === "file")) {
-    await removeFile(client, file.name, logger);
+    await removeFile(client, basePath, file.name, logger);
   }
 
   // delete old folders
@@ -384,12 +373,13 @@ async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: 
 
   logger.all(`----------------------------------------------------------------`);
   logger.all(`🎉 Sync complete. Saving current server state to "${args["server-dir"] + args["state-name"]}"`);
-  await client.uploadFrom(args["state-name"], args["state-name"]);
+  await retryRequest(logger, async () => await client.uploadFrom(args["local-dir"] + args["state-name"], args["state-name"]));
 }
+
 
 export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
   const args = getDefaultSettings(deployArgs);
-  const logger = new Logger(args["log-level"] as any);
+  const logger = new Logger(args["log-level"]);
   const timings = new Timings();
 
   timings.start("total");
@@ -410,13 +400,17 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
   createLocalState(localFiles, logger, args);
 
   const client = new ftp.Client();
-  client.ftp.verbose = args["log-level"] === "debug";
+
+  global.reconnect = async function () {
+    timings.start("connecting");
+    await connect(client, args, logger);
+    timings.stop("connecting");
+  }
+
 
   let totalBytesUploaded = 0;
   try {
-    timings.start("connecting");
-    await connect(client, args);
-    timings.stop("connecting");
+    await global.reconnect();
 
     try {
       const serverFiles = await getServerFiles(client, logger, timings, args);
@@ -432,12 +426,12 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
       }
       catch (e) {
         if (e.code === ErrorCode.FileNameNotAllowed) {
-          logger.warn("Error 553 FileNameNotAllowed, you don't have access to upload that file");
-          logger.warn(e);
+          logger.all("Error 553 FileNameNotAllowed, you don't have access to upload that file");
+          logger.all(e);
           process.exit();
         }
 
-        logger.warn(e);
+        logger.all(e);
         process.exit();
       }
       finally {
@@ -448,9 +442,9 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
     catch (error) {
       const ftpError = error as FTPError;
       if (ftpError.code === ErrorCode.FileNotFoundOrNoAccess) {
-        logger.warn("Couldn't find file");
+        logger.all("Couldn't find file");
       }
-      logger.warn(ftpError);
+      logger.all(ftpError);
     }
 
   }

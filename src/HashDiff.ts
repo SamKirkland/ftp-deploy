@@ -19,12 +19,12 @@ export class HashDiff implements IDiff {
         const localFilesSorted = localFiles.data.sort((first, second) => first.name.localeCompare(second.name));
         const serverFilesSorted = serverFiles.data.sort((first, second) => first.name.localeCompare(second.name));
 
-        logger.info(`----------------------------------------------------------------`);
-        logger.info(`Local Files:\t${formatNumber(localFilesSorted.length)}`);
-        logger.info(`Server Files:\t${formatNumber(localFilesSorted.length)}`);
-        logger.info(`----------------------------------------------------------------`);
-        logger.info(`Calculating differences between client & server`);
-        logger.info(`----------------------------------------------------------------`);
+        logger.standard(`----------------------------------------------------------------`);
+        logger.standard(`Local Files:\t${formatNumber(localFilesSorted.length)}`);
+        logger.standard(`Server Files:\t${formatNumber(localFilesSorted.length)}`);
+        logger.standard(`----------------------------------------------------------------`);
+        logger.standard(`Calculating differences between client & server`);
+        logger.standard(`----------------------------------------------------------------`);
 
         let localPosition = 0;
         let serverPosition = 0;
@@ -46,7 +46,7 @@ export class HashDiff implements IDiff {
             if (fileNameCompare < 0) {
                 let icon = localFile.type === "folder" ? `📁 Create` : `➕ Upload`;
 
-                logger.info(`${icon}: ${localFile.name}`);
+                logger.standard(`${icon}: ${localFile.name}`);
                 uploadList.push(localFile);
                 sizeUpload += localFile.size ?? 0;
                 localPosition += 1;
@@ -54,7 +54,7 @@ export class HashDiff implements IDiff {
             else if (fileNameCompare > 0) {
                 let icon = serverFile.type === "folder" ? `📁` : `🗑️`;
 
-                logger.info(`${icon}  Delete: ${serverFile.name}    `);
+                logger.standard(`${icon}  Delete: ${serverFile.name}    `);
                 deleteList.push(serverFile);
                 sizeDelete += serverFile.size ?? 0;
                 serverPosition += 1;
@@ -63,10 +63,10 @@ export class HashDiff implements IDiff {
                 // paths are a match
                 if (localFile.type === "file" && serverFile.type === "file") {
                     if (localFile.hash === serverFile.hash) {
-                        logger.info(`⚖️  File content is the same, doing nothing: ${localFile.name}`);
+                        logger.standard(`⚖️  File content is the same, doing nothing: ${localFile.name}`);
                     }
                     else {
-                        logger.info(`🔁 File replace: ${localFile.name}`);
+                        logger.standard(`🔁 File replace: ${localFile.name}`);
                         sizeReplace += localFile.size ?? 0;
                         replaceList.push(localFile);
                     }

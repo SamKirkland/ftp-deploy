@@ -4,8 +4,6 @@ import { Record } from "./types";
 import { ILogger } from "./utilities";
 import path from "path";
 import FtpSrv from "ftp-srv";
-import { deploy } from "./module";
-import { Timer } from "./utilities";
 
 const tenFiles: Record[] = [
     {
@@ -72,9 +70,8 @@ const tenFiles: Record[] = [
 
 class MockedLogger implements ILogger {
     all() { };
-    warn() { };
-    info() { };
-    debug() { };
+    standard() { };
+    verbose() { };
 }
 
 describe("HashDiff", () => {
@@ -176,42 +173,6 @@ describe("HashDiff", () => {
         expect(diffs.sizeUpload).toEqual(0);
         expect(diffs.sizeDelete).toEqual(1000);
         expect(diffs.sizeReplace).toEqual(0);
-    });
-});
-
-
-describe("Utilities", () => {
-    test("Start and stop timer", () => {
-        const time = new Timer();
-
-        time.start();
-        time.stop();
-
-        expect(time.time).not.toBeNull();
-    });
-
-    test("Start and stop timer multiple times", async () => {
-        const time = new Timer();
-
-        time.start();
-        await new Promise(resolve => setTimeout(resolve, 10));
-        time.stop();
-
-        const firstTime = time.time;
-
-        time.start();
-        await new Promise(resolve => setTimeout(resolve, 10));
-        time.stop();
-
-        const secondTime = time.time;
-
-        expect(firstTime).not.toEqual(secondTime);
-    });
-
-    test("Errors when stop without start", () => {
-        const time = new Timer();
-
-        expect(() => time.stop()).toThrowError("Called .stop() before calling .start()");
     });
 });
 

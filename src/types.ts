@@ -44,22 +44,16 @@ export interface IFtpDeployArguments {
     "dangerous-clean-slate"?: boolean;
 
     /**
-     * An array of glob patterns, these files will always be included in the publish/delete process - even if no change occurred
-     * @default []
-     */
-    include?: string[];
-
-    /**
      * An array of glob patterns, these files will not be included in the publish/delete process
      * @default [ ".git*", ".git*\/**", "node_modules\/**", "node_modules\/**\/*" ]
      */
     exclude?: string[];
 
     /**
-     * How much information should print. warn=only important info, info=warn+file changes, debug=print everything the script is doing
+     * How much information should print. minimal=only important info, standard=important info and basic file changes, verbose=print everything the script is doing
      * @default "info"
      */
-    "log-level"?: "warn" | "info" | "debug";
+    "log-level"?: "minimal" | "standard" | "verbose";
 
     /**
      * When using protocol "ftps" or "ftps-legacy" should the cert name need to match exactly?
@@ -82,9 +76,8 @@ export interface IFtpDeployArgumentsWithDefaults {
     "state-name": string;
     "dry-run": boolean;
     "dangerous-clean-slate": boolean;
-    include: string[];
     exclude: string[];
-    "log-level": "warn" | "info" | "debug";
+    "log-level": "minimal" | "standard" | "verbose";
     security: "strict" | "loose";
 }
 
