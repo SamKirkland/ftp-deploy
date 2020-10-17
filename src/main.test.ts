@@ -4,6 +4,7 @@ import { Record } from "./types";
 import { ILogger } from "./utilities";
 import path from "path";
 import FtpSrv from "ftp-srv";
+import { deploy } from "./module";
 
 const tenFiles: Record[] = [
     {
@@ -179,51 +180,35 @@ describe("HashDiff", () => {
 
 describe("Deploy", () => {
     const port = 2121;
-    const homeDir = path.join(__dirname, "../ftpServer/");
+    const homeDir = path.join(__dirname, "../");
 
     const ftpServer = new FtpSrv({
         anonymous: true,
         pasv_url: "127.0.0.1",
-        url: `ftp://127.0.0.1:${port}`
+        url: `ftp://127.0.0.1:${port}`,
+        tls: false,
+        blacklist: [],
+        whitelist: []
     });
 
     ftpServer.on("login", (data, resolve) => {
-        console.log("[login] Connection by", data.username);
-        console.log("[login] Setting home dir to:", homeDir);
         resolve({ root: homeDir });
     });
 
-    ftpServer.on("client-error", ({ context, error }) => {
-        console.log("**client-error**");
-        console.log(context);
-        console.log(error);
-    });
-
-    ftpServer.on("error" as any, err => {
-        console.log("**error**");
-        console.log(err);
-    });
-
-    ftpServer.on("uncaughtException" as any, err => {
-        console.log("**uncaughtException**");
-        console.log(err);
-    });
-
-    /*
-    test("should connect", async () => {
-        ftpServer
-            .listen()
-            .then(() => {
-                console.log(`Serving ${homeDir} on port: ${port}`);
-            });
+    test("Full Deploy", async () => {
+        ftpServer.listen();
 
         await deploy({
-            "server": "127.0.0.1",
-            "username": "testUsername",
-            "password": "testPassword",
-            "port": port,
-            "local-dir": "src/"
+            server: "127.0.0.1",
+            username: "testUsername",
+            password: "testPassword",
+            port: port,
+            protocol: "ftp",
+            "local-dir": "./",
+            "dry-run": true,
+            "log-level": "minimal"
         });
-    });
-    */
+
+        ftpServer.close();
+    }, 30000);
 });

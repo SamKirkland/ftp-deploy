@@ -24,12 +24,17 @@ async function fileHash(filename: string, algorithm: "md5" | "sha1" | "sha256" |
       let s = fs.createReadStream(filename);
       s.on("data", function (data: any) {
         shasum.update(data)
-      })
+      });
+
+      s.on("error", function (error) {
+        reject(error);
+      });
+
       // making digest
       s.on("end", function () {
         const hash = shasum.digest("hex")
         return resolve(hash);
-      })
+      });
     } catch (error) {
       return reject("calc fail");
     }
@@ -152,18 +157,24 @@ async function ensureDir(client: ftp.Client, logger: ILogger, timings: Timings, 
  * Note working dir is modified and NOT reset after upload
  * For now we are going to reset it - but this will be removed for performance
  */
-async function uploadFile(client: ftp.Client, basePath: string, filePath: string, logger: ILogger, type: "upload" | "replace" = "upload"): Promise<void> {
+async function uploadFile(client: ftp.Client, basePath: string, filePath: string, logger: ILogger, type: "upload" | "replace" = "upload", dryRun: boolean): Promise<void> {
   const typePresent = type === "upload" ? "uploading" : "replacing";
   const typePast = type === "upload" ? "uploaded" : "replaced";
   logger.all(`${typePresent} "${filePath}"`);
 
-  await retryRequest(logger, async () => await client.uploadFrom(basePath + filePath, filePath));
+  if (dryRun === false) {
+    await retryRequest(logger, async () => await client.uploadFrom(basePath + filePath, filePath));
+  }
 
   logger.verbose(`  file ${typePast}`);
 }
 
-async function createFolder(client: ftp.Client, folderPath: string, logger: ILogger, timings: Timings): Promise<void> {
+async function createFolder(client: ftp.Client, folderPath: string, logger: ILogger, timings: Timings, dryRun: boolean): Promise<void> {
   logger.all(`creating folder "${folderPath + "/"}"`);
+
+  if (dryRun === false) {
+    return;
+  }
 
   const path = getFileBreadcrumbs(folderPath + "/");
 
@@ -180,7 +191,7 @@ async function createFolder(client: ftp.Client, folderPath: string, logger: ILog
   logger.verbose(`  completed`);
 }
 
-async function removeFolder(client: ftp.Client, folderPath: string, logger: ILogger): Promise<void> {
+async function removeFolder(client: ftp.Client, folderPath: string, logger: ILogger, dryRun: boolean): Promise<void> {
   logger.all(`removing folder "${folderPath + "/"}"`);
 
   const path = getFileBreadcrumbs(folderPath + "/");
@@ -191,7 +202,9 @@ async function removeFolder(client: ftp.Client, folderPath: string, logger: ILog
   else {
     try {
       logger.verbose(`  removing folder "${path.folders.join("/") + "/"}"`);
-      await retryRequest(logger, async () => await client.removeDir(path.folders!.join("/") + "/"));
+      if (dryRun === false) {
+        await retryRequest(logger, async () => await client.removeDir(path.folders!.join("/") + "/"));
+      }
     }
     catch (e) {
       let error = e as FTPResponse;
@@ -212,11 +225,13 @@ async function removeFolder(client: ftp.Client, folderPath: string, logger: ILog
   logger.verbose(`  completed`);
 }
 
-async function removeFile(client: ftp.Client, basePath: string, filePath: string, logger: ILogger): Promise<void> {
+async function removeFile(client: ftp.Client, basePath: string, filePath: string, logger: ILogger, dryRun: boolean): Promise<void> {
   logger.all(`removing ${filePath}...`);
 
   try {
-    await retryRequest(logger, async () => await client.remove(basePath + filePath));
+    if (dryRun === false) {
+      await retryRequest(logger, async () => await client.remove(basePath + filePath));
+    }
     logger.verbose(`  file removed`);
   }
   catch (e) {
@@ -347,28 +362,28 @@ async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: 
 
   // create new folders
   for (const file of diffs.upload.filter(item => item.type === "folder")) {
-    await createFolder(client, file.name, logger, timings);
+    await createFolder(client, file.name, logger, timings, args["dry-run"]);
   }
 
   // upload new files
   for (const file of diffs.upload.filter(item => item.type === "file").filter(item => item.name !== args["state-name"])) {
-    await uploadFile(client, basePath, file.name, logger);
+    await uploadFile(client, basePath, file.name, logger, "upload", args["dry-run"]);
   }
 
   // replace new files
   for (const file of diffs.replace.filter(item => item.type === "file").filter(item => item.name !== args["state-name"])) {
     // note: FTP will replace old files with new files. We run replacements after uploads to limit downtime
-    await uploadFile(client, basePath, file.name, logger, "replace");
+    await uploadFile(client, basePath, file.name, logger, "replace", args["dry-run"]);
   }
 
   // delete old files
   for (const file of diffs.delete.filter(item => item.type === "file")) {
-    await removeFile(client, basePath, file.name, logger);
+    await removeFile(client, basePath, file.name, logger, args["dry-run"]);
   }
 
   // delete old folders
   for (const file of diffs.delete.filter(item => item.type === "folder")) {
-    await removeFolder(client, file.name, logger);
+    await removeFolder(client, file.name, logger, args["dry-run"]);
   }
 
   logger.all(`----------------------------------------------------------------`);
