@@ -172,7 +172,7 @@ async function uploadFile(client: ftp.Client, basePath: string, filePath: string
 async function createFolder(client: ftp.Client, folderPath: string, logger: ILogger, timings: Timings, dryRun: boolean): Promise<void> {
   logger.all(`creating folder "${folderPath + "/"}"`);
 
-  if (dryRun === false) {
+  if (dryRun === true) {
     return;
   }
 
