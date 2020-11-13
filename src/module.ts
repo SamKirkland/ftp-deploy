@@ -388,7 +388,9 @@ async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: 
 
   logger.all(`----------------------------------------------------------------`);
   logger.all(`🎉 Sync complete. Saving current server state to "${args["server-dir"] + args["state-name"]}"`);
-  await retryRequest(logger, async () => await client.uploadFrom(args["local-dir"] + args["state-name"], args["state-name"]));
+  if (args["dry-run"] === false) {
+    await retryRequest(logger, async () => await client.uploadFrom(args["local-dir"] + args["state-name"], args["server-dir"] + args["state-name"]));
+  }
 }
 
 
