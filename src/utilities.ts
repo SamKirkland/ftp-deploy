@@ -72,7 +72,7 @@ interface ITimers {
     [key: string]: Timer | undefined;
 }
 
-type AvailableTimers = "connecting" | "hash" | "upload" | "total" | "changingDir";
+type AvailableTimers = "connecting" | "hash" | "upload" | "total" | "changingDir" | "logging";
 
 export class Timings {
     private timers: ITimers = {};

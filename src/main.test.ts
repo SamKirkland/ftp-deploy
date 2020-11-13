@@ -1,10 +1,10 @@
 import { HashDiff } from "./HashDiff";
-import { IFileList, currentVersion } from "./types";
+import { IFileList, currentSyncFileVersion } from "./types";
 import { Record } from "./types";
 import { ILogger } from "./utilities";
 import path from "path";
 import FtpSrv from "ftp-srv";
-import { deploy } from "./module";
+import { deploy, getLocalFiles } from "./module";
 
 const tenFiles: Record[] = [
     {
@@ -77,8 +77,8 @@ class MockedLogger implements ILogger {
 
 describe("HashDiff", () => {
     const thing = new HashDiff();
-    const emptyFileList: IFileList = { version: currentVersion, description: "", generatedTime: new Date().getTime(), data: [] };
-    const minimalFileList: IFileList = { version: currentVersion, description: "", generatedTime: new Date().getTime(), data: tenFiles };
+    const emptyFileList: IFileList = { version: currentSyncFileVersion, description: "", generatedTime: new Date().getTime(), data: [] };
+    const minimalFileList: IFileList = { version: currentSyncFileVersion, description: "", generatedTime: new Date().getTime(), data: tenFiles };
 
     test("Empty Client, Empty Server", () => {
         const diffs = thing.getDiffs(emptyFileList, emptyFileList, new MockedLogger());
@@ -177,6 +177,54 @@ describe("HashDiff", () => {
     });
 });
 
+describe("getLocalFiles", () => {
+    test("local-dir", async () => {
+        const localDirDiffs = await getLocalFiles({
+            server: "127.0.0.1",
+            username: "testUsername",
+            password: "testPassword",
+            port: 21,
+            protocol: "ftp",
+            "local-dir": "./.github/",
+            "server-dir": "./",
+            "state-name": ".ftp-deploy-sync-state.json",
+            "dry-run": true,
+            "dangerous-clean-slate": false,
+            exclude: [],
+            "log-level": "standard",
+            security: "loose",
+        });
+
+        expect(localDirDiffs.data).toEqual([
+            {
+                type: "folder",
+                name: "workflows",
+                size: undefined
+            },
+            {
+                type: "file",
+                name: "workflows/main.yml",
+                size: 410,
+                hash: "356464bef208ba0862c358f06d087b20f2b1073809858dd9c69fc2bc2894619f"
+            }
+        ] as Record[]);
+    });
+});
+
+describe("error handling", () => {
+    test("throws on error", async () => {
+        await expect(async () => await deploy({
+            server: "127.0.0.1",
+            username: "testUsername",
+            password: "testPassword",
+            port: 21,
+            protocol: "ftp",
+            "local-dir": "./",
+            "dry-run": true,
+            "log-level": "minimal"
+        })).rejects.toThrow();
+    }, 30000);
+});
 
 describe("Deploy", () => {
     const port = 2121;

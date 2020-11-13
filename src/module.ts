@@ -4,7 +4,7 @@ import crypto from "crypto";
 import fs from "fs";
 import multiMatch from "multiMatch";
 import { FTPError, FTPResponse } from "basic-ftp";
-import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments, currentVersion, IFtpDeployArgumentsWithDefaults, DiffResult } from "./types";
+import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments, currentSyncFileVersion, IFtpDeployArgumentsWithDefaults, DiffResult } from "./types";
 import { HashDiff } from "./HashDiff";
 import { pluralize, Timings, Logger, ILogger, retryRequest } from "./utilities";
 import prettyBytes from "pretty-bytes";
@@ -54,7 +54,7 @@ function applyExcludeFilter(stat: Stats, args: IFtpDeployArgumentsWithDefaults) 
   return true;
 }
 
-async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
+export async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
   const files = await readdir.async(args["local-dir"], { deep: true, stats: true, sep: "/", filter: (stat) => applyExcludeFilter(stat, args) });
   const records: Record[] = [];
 
@@ -74,7 +74,7 @@ async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFi
         type: "file",
         name: stat.path,
         size: stat.size,
-        hash: await fileHash(stat.path, "sha256")
+        hash: await fileHash(args["local-dir"] + stat.path, "sha256")
       });
 
       continue;
@@ -87,7 +87,7 @@ async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFi
 
   return {
     description: syncFileDescription,
-    version: currentVersion,
+    version: currentSyncFileVersion,
     generatedTime: new Date().getTime(),
     data: records
   };
@@ -314,7 +314,7 @@ async function getServerFiles(client: ftp.Client, logger: ILogger, timings: Timi
     // set the server state to nothing, because we don't know what the server state is
     return {
       description: syncFileDescription,
-      version: currentVersion,
+      version: currentSyncFileVersion,
       generatedTime: new Date().getTime(),
       data: [],
     };
@@ -402,7 +402,7 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
   // header
   // todo allow swapping out library/version text based on if we are using action
   logger.all(`----------------------------------------------------------------`);
-  logger.all(`🚀 Thanks for using ftp-deploy version ${currentVersion}. Let's deploy some stuff!   `);
+  logger.all(`🚀 Thanks for using ftp-deploy version ${currentSyncFileVersion}. Let's deploy some stuff!   `);
   logger.all(`----------------------------------------------------------------`);
   logger.all(`If you found this project helpful, please support it`);
   logger.all(`by giving it a ⭐ on Github --> https://github.com/SamKirkland/FTP-Deploy-Action`);
@@ -430,8 +430,10 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
     try {
       const serverFiles = await getServerFiles(client, logger, timings, args);
 
+      timings.start("logging");
       const diffTool: IDiff = new HashDiff();
       const diffs = diffTool.getDiffs(localFiles, serverFiles, logger);
+      timings.stop("logging");
 
       totalBytesUploaded = diffs.sizeUpload + diffs.sizeReplace;
 
@@ -442,12 +444,10 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
       catch (e) {
         if (e.code === ErrorCode.FileNameNotAllowed) {
           logger.all("Error 553 FileNameNotAllowed, you don't have access to upload that file");
-          logger.all(e);
-          process.exit();
         }
-
         logger.all(e);
-        process.exit();
+
+        throw e;
       }
       finally {
         timings.stop("upload");
@@ -459,12 +459,14 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
       if (ftpError.code === ErrorCode.FileNotFoundOrNoAccess) {
         logger.all("Couldn't find file");
       }
+
       logger.all(ftpError);
     }
 
   }
   catch (error) {
     prettyError(logger, args, error);
+    throw error;
   }
   finally {
     client.close();
@@ -480,6 +482,7 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
   logger.all(`Time spent connecting to server:  ${timings.getTimeFormatted("connecting")}`);
   logger.all(`Time spent deploying:             ${timings.getTimeFormatted("upload")} (${uploadSpeed}/second)`);
   logger.all(`  - changing dirs:                ${timings.getTimeFormatted("changingDir")}`);
+  logger.all(`  - logging:                      ${timings.getTimeFormatted("logging")}`);
   logger.all(`----------------------------------------------------------------`);
   logger.all(`Total time:                       ${timings.getTimeFormatted("total")}`);
   logger.all(`----------------------------------------------------------------`);
