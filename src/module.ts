@@ -402,9 +402,8 @@ export async function deploy(deployArgs: IFtpDeployArguments): Promise<void> {
   timings.start("total");
 
   // header
-  // todo allow swapping out library/version text based on if we are using action
   logger.all(`----------------------------------------------------------------`);
-  logger.all(`🚀 Thanks for using ftp-deploy version ${currentSyncFileVersion}. Let's deploy some stuff!   `);
+  logger.all(`🚀 Thanks for using ftp-deploy. Let's deploy some stuff!   `);
   logger.all(`----------------------------------------------------------------`);
   logger.all(`If you found this project helpful, please support it`);
   logger.all(`by giving it a ⭐ on Github --> https://github.com/SamKirkland/FTP-Deploy-Action`);
