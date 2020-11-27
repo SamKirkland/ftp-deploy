@@ -176,6 +176,9 @@ async function createFolder(client: ftp.Client, folderPath: string, logger: ILog
     return;
   }
 
+  // This is to potenially keep connections open between excessive calls to check for folders
+  await client.send('NOOP');
+
   const path = getFileBreadcrumbs(folderPath + "/");
 
   if (path.folders === null) {
