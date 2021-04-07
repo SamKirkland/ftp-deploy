@@ -378,7 +378,7 @@ async function syncLocalToServer(client: ftp.Client, diffs: DiffResult, logger: 
 
   // delete old files
   for (const file of diffs.delete.filter(item => item.type === "file")) {
-    await removeFile(client, basePath, file.name, logger, args["dry-run"]);
+    await removeFile(client, args["server-dir"], file.name, logger, args["dry-run"]);
   }
 
   // delete old folders
