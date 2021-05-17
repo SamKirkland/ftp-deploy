@@ -2,7 +2,7 @@ import * as ftp from "basic-ftp";
 import readdir, { Stats } from "@jsdevtools/readdir-enhanced";
 import crypto from "crypto";
 import fs from "fs";
-import multiMatch from "multiMatch";
+import multiMatch from "multimatch";
 import { FTPError, FTPResponse } from "basic-ftp";
 import { Record, IFileList, IDiff, IFilePath, syncFileDescription, ErrorCode, IFtpDeployArguments, currentSyncFileVersion, IFtpDeployArgumentsWithDefaults, DiffResult } from "./types";
 import { HashDiff } from "./HashDiff";
