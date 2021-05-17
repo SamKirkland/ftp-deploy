@@ -266,7 +266,7 @@ async function connect(client: ftp.Client, args: IFtpDeployArgumentsWithDefaults
 
   client.ftp.verbose = args["log-level"] === "verbose";
 
-  const rejectUnauthorized = args.security === "loose";
+  const rejectUnauthorized = args.security === "strict";
 
   await client.access({
     host: args.server,
