@@ -2,6 +2,7 @@
 
 import { deploy, excludeDefaults } from "./module";
 import yargs from "yargs";
+import { getDefaultSettings, Logger, Timings } from "./utilities";
 
 const argv = yargs.options({
     "server": { type: "string", demandOption: true },
@@ -24,7 +25,11 @@ const argv = yargs.options({
 
 
 async function runScript() {
-    await deploy(argv as any);
+    const argsWithDefaults = getDefaultSettings(argv as any);
+    const logger = new Logger(argsWithDefaults["log-level"]);
+    const timings = new Timings();
+
+    await deploy(argsWithDefaults, logger, timings);
 }
 
 

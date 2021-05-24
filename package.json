@@ -1,6 +1,6 @@
 {
   "name": "@samkirkland/ftp-deploy",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "private": false,
   "description": "Deploy files to a ftp server",
   "main": "dist/module.js",
@@ -9,9 +9,10 @@
   },
   "scripts": {
     "build": "tsc",
-    "deploy": "tsc && node ./dist/cli.js ---server wwwssr16.supercp.com --protocol ftps --secure strict --username \"ftp-deploy@samkirkland.com\" --password \"actualPasswordHere\" --exclude --exclude dist/** --exclude .git* --exclude .git*/** --exclude node_modules/** --exclude node_modules/**/*",
+    "deploy": "tsc && node ./dist/cli.js ---server samkirkland.com --protocol ftp --username \"ftp-deploy@samkirkland.com\" --password \"actualPasswordHere\" --exclude --exclude dist/** --exclude .git* --exclude .git*/** --exclude node_modules/** --exclude node_modules/**/*",
     "lint": "eslint src/**/*.ts",
-    "test": "jest"
+    "test": "jest",
+    "test-watch": "jest --watch"
   },
   "repository": {
     "type": "git",
@@ -25,30 +26,30 @@
   "author": "Sam Kirkland",
   "license": "MIT",
   "dependencies": {
-    "basic-ftp": "^4.6.2",
-    "lodash": "^4.17.20",
-    "multimatch": "^4.0.0",
-    "pretty-bytes": "^5.4.1",
-    "pretty-ms": "^7.0.0",
+    "basic-ftp": "^4.6.6",
+    "lodash": "^4.17.21",
+    "multimatch": "^5.0.0",
+    "pretty-bytes": "^5.6.0",
+    "pretty-ms": "^7.0.1",
     "readdir-enhanced": "^6.0.4",
     "yargs": "^15.4.1"
   },
   "devDependencies": {
-    "@types/jest": "^26.0.13",
-    "@types/lodash": "^4.14.161",
-    "@types/minimatch": "^3.0.3",
+    "@types/jest": "^26.0.23",
+    "@types/lodash": "^4.14.170",
+    "@types/minimatch": "^3.0.4",
     "@types/node": "^14.6.4",
     "@types/yargs": "^15.0.5",
     "@typescript-eslint/eslint-plugin": "^4.0.1",
     "@typescript-eslint/parser": "^4.0.1",
     "eslint": "^7.8.1",
     "eslint-plugin-jest": "^24.0.0",
-    "ftp-srv": "^4.3.4",
-    "jest": "^26.4.2",
+    "ftp-srv": "^4.4.0",
+    "jest": "^26.6.3",
     "js-yaml": "^3.14.0",
     "ts-jest": "^26.3.0",
     "ts-node-dev": "^1.0.0-pre.62",
-    "typescript": "^4.0.2"
+    "typescript": "^4.2.4"
   },
   "bugs": {
     "url": "https://github.com/SamKirkland/ftp-deploy/issues"

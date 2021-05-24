@@ -1,5 +1,6 @@
 import prettyMilliseconds from "pretty-ms";
-import { ErrorCode } from "./types";
+import { excludeDefaults } from "./module";
+import { ErrorCode, IFtpDeployArguments, IFtpDeployArgumentsWithDefaults } from "./types";
 
 export interface ILogger {
     all(...data: any[]): void;
@@ -74,7 +75,14 @@ interface ITimers {
 
 type AvailableTimers = "connecting" | "hash" | "upload" | "total" | "changingDir" | "logging";
 
-export class Timings {
+export interface ITimings {
+    start(type: AvailableTimers): void;
+    stop(type: AvailableTimers): void;
+    getTime(type: AvailableTimers): number;
+    getTimeFormatted(type: AvailableTimers): string;
+}
+
+export class Timings implements ITimings {
     private timers: ITimers = {};
 
     public start(type: AvailableTimers): void {
@@ -146,4 +154,34 @@ export class Timer {
 
         return (this.totalTime[0] * 1000) + (this.totalTime[1] / 1000000);
     }
+}
+
+export function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDeployArgumentsWithDefaults {
+    if (withoutDefaults["local-dir"] !== undefined) {
+        if (!withoutDefaults["local-dir"].endsWith("/")) {
+            throw new Error("local-dir should be a folder (must end with /)");
+        }
+    }
+
+    if (withoutDefaults["server-dir"] !== undefined) {
+        if (!withoutDefaults["server-dir"].endsWith("/")) {
+            throw new Error("server-dir should be a folder (must end with /)");
+        }
+    }
+
+    return {
+        "server": withoutDefaults.server,
+        "username": withoutDefaults.username,
+        "password": withoutDefaults.password,
+        "port": withoutDefaults.port ?? 21,
+        "protocol": withoutDefaults.protocol ?? "ftp",
+        "local-dir": withoutDefaults["local-dir"] ?? "./",
+        "server-dir": withoutDefaults["server-dir"] ?? "./",
+        "state-name": withoutDefaults["state-name"] ?? ".ftp-deploy-sync-state.json",
+        "dry-run": withoutDefaults["dry-run"] ?? false,
+        "dangerous-clean-slate": withoutDefaults["dangerous-clean-slate"] ?? false,
+        "exclude": withoutDefaults.exclude ?? excludeDefaults,
+        "log-level": withoutDefaults["log-level"] ?? "standard",
+        "security": withoutDefaults.security ?? "loose",
+    };
 }

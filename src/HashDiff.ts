@@ -1,8 +1,37 @@
 import { IDiff, IFileList, Record } from "./types";
+import fs from "fs";
 import { ILogger } from "./utilities";
+import crypto from "crypto";
 
 function formatNumber(number: number): string {
     return number.toLocaleString();
+}
+
+export async function fileHash(filename: string, algorithm: "md5" | "sha1" | "sha256" | "sha512"): Promise<string> {
+    return new Promise((resolve, reject) => {
+        // Algorithm depends on availability of OpenSSL on platform
+        // Another algorithms: "sha1", "md5", "sha256", "sha512" ...
+        let shasum = crypto.createHash(algorithm);
+        try {
+            let s = fs.createReadStream(filename);
+            s.on("data", function (data: any) {
+                shasum.update(data)
+            });
+
+            s.on("error", function (error) {
+                reject(error);
+            });
+
+            // making digest
+            s.on("end", function () {
+                const hash = shasum.digest("hex")
+                return resolve(hash);
+            });
+        }
+        catch (error) {
+            return reject("calc fail");
+        }
+    });
 }
 
 export class HashDiff implements IDiff {
