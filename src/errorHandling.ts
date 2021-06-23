@@ -6,7 +6,9 @@ import { FTPError } from "basic-ftp";
 function logOriginalError(logger: ILogger, error: any) {
     logger.all();
     logger.all(`----------------------------------------------------------------`);
-    logger.all(`----------------------  Full Error below  ----------------------`);
+    logger.all(`----------------------  full error below  ----------------------`);
+    logger.all(`----------------------------------------------------------------`);
+    logger.all();
     logger.all(error);
 }
 
@@ -18,7 +20,7 @@ function logOriginalError(logger: ILogger, error: any) {
 export function prettyError(logger: ILogger, args: IFtpDeployArgumentsWithDefaults, error: any): void {
     logger.all();
     logger.all(`----------------------------------------------------------------`);
-    logger.all(`---------------  🔥🔥🔥 A error occurred  🔥🔥🔥  --------------`);
+    logger.all(`--------------  🔥🔥🔥 an error occurred  🔥🔥🔥  --------------`);
     logger.all(`----------------------------------------------------------------`);
 
     const ftpError = error as FTPError;

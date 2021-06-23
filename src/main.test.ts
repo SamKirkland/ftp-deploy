@@ -4,9 +4,11 @@ import { Record } from "./types";
 import { getDefaultSettings, ILogger, Timings } from "./utilities";
 import path from "path";
 import FtpSrv from "ftp-srv";
-import { deploy } from "./module";
-import { getLocalFiles } from "./localFiles";
+import { applyExcludeFilter, getLocalFiles } from "./localFiles";
 import { FTPSyncProvider } from "./syncProvider";
+import { deploy } from "./deploy";
+import { Stats as readdirStats } from "@jsdevtools/readdir-enhanced";
+import { excludeDefaults } from "./module";
 
 const tenFiles: Record[] = [
     {
@@ -404,6 +406,63 @@ describe("FTP sync commands", () => {
     });
 });
 
+class MockedStats implements readdirStats {
+    constructor(path: string) {
+        this.path = path;
+        this.depth = path.split("/").length;
+    }
+
+    isFile(): boolean {
+        return !this.path.endsWith("/");
+    }
+
+    isDirectory(): boolean {
+        return this.path.endsWith("/");
+    }
+
+    isBlockDevice(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    isCharacterDevice(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    isSymbolicLink(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    isFIFO(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    isSocket(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    dev = 0;
+    ino = 0;
+    mode = 0;
+    nlink = 0;
+    uid = 0;
+    gid = 0;
+    rdev = 0;
+    size = 0;
+    blksize = 0;
+    blocks = 0;
+    atimeMs = 0;
+    mtimeMs = 0;
+    ctimeMs = 0;
+    birthtimeMs = 0;
+    atime: Date = new Date();
+    mtime: Date = new Date();
+    ctime: Date = new Date();
+    birthtime: Date = new Date();
+
+    path: string;
+    depth: number;
+}
+
 describe("getLocalFiles", () => {
     test("local-dir", async () => {
         const localDirDiffs = await getLocalFiles({
@@ -435,6 +494,78 @@ describe("getLocalFiles", () => {
                 hash: "356464bef208ba0862c358f06d087b20f2b1073809858dd9c69fc2bc2894619f"
             }
         ] as Record[]);
+    });
+
+    test("exclude node_modules", async () => {
+        const files: MockedStats[] = [
+            new MockedStats("test/sam"),
+            new MockedStats("node_modules/"),
+            new MockedStats("node_modules/test.js"),
+            new MockedStats("node_modules/@samkirkland/"),
+        ];
+
+        const filteredStats = files.filter(file => applyExcludeFilter(file, excludeDefaults));
+
+        expect(filteredStats.map(f => f.path)).toStrictEqual(["test/sam"]);
+    });
+
+    test("exclude .git files", async () => {
+        const files: MockedStats[] = [
+            new MockedStats("test/sam"),
+            new MockedStats(".git/"),
+            new MockedStats(".gitattributes"),
+            new MockedStats(".gitignore"),
+            new MockedStats(".git/config"),
+            new MockedStats(".github/"),
+            new MockedStats(".github/workflows/main.yml"),
+            new MockedStats("test/.git/workflows/main.yml"),
+        ];
+
+        const filteredStats = files.filter(file => applyExcludeFilter(file, excludeDefaults));
+
+        expect(filteredStats.map(f => f.path)).toStrictEqual(["test/sam"]);
+    });
+
+    test("exclude none", async () => {
+        const files: MockedStats[] = [
+            new MockedStats("test/sam"),
+            new MockedStats("test/folder/"),
+            new MockedStats(".gitattributes"),
+            new MockedStats(".gitignore"),
+            new MockedStats(".git/config"),
+            new MockedStats(".github/"),
+            new MockedStats(".github/workflows/main.yml"),
+            new MockedStats("test/.git/workflows/main.yml"),
+            new MockedStats("node_modules/"),
+            new MockedStats("node_modules/test.js"),
+            new MockedStats("node_modules/@samkirkland/"),
+        ];
+
+        const filteredStats = files.filter(file => applyExcludeFilter(file, []));
+
+        expect(filteredStats.length).toBe(11);
+    });
+
+    test("exclude all js files", async () => {
+        const files: MockedStats[] = [
+            new MockedStats("test/test.js"),
+            new MockedStats("test/folder/"),
+        ];
+
+        const filteredStats = files.filter(file => applyExcludeFilter(file, ["*.js"]));
+
+        expect(filteredStats.map(f => f.path)).toStrictEqual(["test/folder/"]);
+    });
+
+    test("exclude globbed folder", async () => {
+        const files: MockedStats[] = [
+            new MockedStats("test/test.js"),
+            new MockedStats("test/folder/"),
+        ];
+
+        const filteredStats = files.filter(file => applyExcludeFilter(file, ["**/folder/**"]));
+
+        expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
     });
 });
 

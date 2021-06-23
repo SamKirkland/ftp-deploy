@@ -3,10 +3,11 @@ import { Record, IFileList, syncFileDescription, currentSyncFileVersion, IFtpDep
 import { fileHash } from "./HashDiff";
 import multiMatch from "multiMatch";
 
-function applyExcludeFilter(stat: Stats, args: IFtpDeployArgumentsWithDefaults) {
+export function applyExcludeFilter(stat: Stats, excludeFilter: string[]) {
     // match exclude, return immediatley
-    if (args.exclude.length > 0) {
-        const excludeMatch = multiMatch(stat.path, args.exclude, { matchBase: true, dot: true });
+    if (excludeFilter.length > 0) {
+        const pathWithFolderSlash = stat.path + (stat.isDirectory() ? "/" : "");
+        const excludeMatch = multiMatch(pathWithFolderSlash, excludeFilter, { matchBase: true, dot: true });
 
         if (excludeMatch.length > 0) {
             return false;
@@ -17,7 +18,7 @@ function applyExcludeFilter(stat: Stats, args: IFtpDeployArgumentsWithDefaults) 
 }
 
 export async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
-    const files = await readdir.async(args["local-dir"], { deep: true, stats: true, sep: "/", filter: (stat) => applyExcludeFilter(stat, args) });
+    const files = await readdir.async(args["local-dir"], { deep: true, stats: true, sep: "/", filter: (stat) => applyExcludeFilter(stat, args.exclude) });
     const records: Record[] = [];
 
     for (let stat of files) {

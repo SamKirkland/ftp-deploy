@@ -1,0 +1,16 @@
+# all files that start with .
+.*
+
+# config files
+tsconfig.json
+jest.config.js
+project.code-workspace
+
+# unbuilt source files
+src/
+
+# all test files
+*.test.*
+
+# typescript types folder
+@types/

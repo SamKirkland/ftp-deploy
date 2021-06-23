@@ -1,8 +1,17 @@
 import prettyBytes from "pretty-bytes";
 import type * as ftp from "basic-ftp";
-import { ensureDir } from "./module";
-import { DiffResult, IFilePath } from "./types";
+import { DiffResult, ErrorCode, IFilePath } from "./types";
 import { ILogger, pluralize, retryRequest, ITimings } from "./utilities";
+
+export async function ensureDir(client: ftp.Client, logger: ILogger, timings: ITimings, folder: string): Promise<void> {
+    timings.start("changingDir");
+    logger.verbose(`  changing dir to ${folder}`);
+
+    await retryRequest(logger, async () => await client.ensureDir(folder));
+
+    logger.verbose(`  dir changed`);
+    timings.stop("changingDir");
+}
 
 interface ISyncProvider {
     createFolder(folderPath: string): Promise<void>;
@@ -93,10 +102,21 @@ export class FTPSyncProvider implements ISyncProvider {
     }
 
     async removeFile(filePath: string) {
-        this.logger.all(`removing ${filePath}...`);
+        this.logger.all(`removing "${filePath}"`);
 
         if (this.dryRun === false) {
-            await retryRequest(this.logger, async () => await this.client.remove(filePath));
+            try {
+                await retryRequest(this.logger, async () => await this.client.remove(filePath));
+            }
+            catch (e) {
+                // this error is common when a file was deleted on the server directly
+                if (e.code === ErrorCode.FileNotFoundOrNoAccess) {
+                    this.logger.standard("File not found or you don't have access to the file - skipping...");
+                }
+                else {
+                    throw e;
+                }
+            }
         }
         this.logger.verbose(`  file removed`);
 
@@ -140,7 +160,7 @@ export class FTPSyncProvider implements ISyncProvider {
         const totalCount = diffs.delete.length + diffs.upload.length + diffs.replace.length;
 
         this.logger.all(`----------------------------------------------------------------`);
-        this.logger.all(`Making changes to ${totalCount} ${pluralize(totalCount, "file", "files")} to sync server state`);
+        this.logger.all(`Making changes to ${totalCount} ${pluralize(totalCount, "file/folder", "files/folders")} to sync server state`);
         this.logger.all(`Uploading: ${prettyBytes(diffs.sizeUpload)} -- Deleting: ${prettyBytes(diffs.sizeDelete)} -- Replacing: ${prettyBytes(diffs.sizeReplace)}`);
         this.logger.all(`----------------------------------------------------------------`);
 
