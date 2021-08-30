@@ -149,8 +149,19 @@ export class FTPSyncProvider implements ISyncProvider {
         const typePast = type === "upload" ? "uploaded" : "replaced";
         this.logger.all(`${typePresent} "${filePath}"`);
 
+        const fileUploadRequest = async () => retryRequest(this.logger, async () => await this.client.uploadFrom(this.localPath + filePath, filePath));
         if (this.dryRun === false) {
-            await retryRequest(this.logger, async () => await this.client.uploadFrom(this.localPath + filePath, filePath));
+            try {
+                await fileUploadRequest();
+            } catch (e) {
+                if (e.code === 550) {
+                    // Folder doesn't exist
+                    await this.createFolder(filePath);
+                    await fileUploadRequest();
+                } else {
+                    throw e;
+                }
+            }
         }
 
         this.logger.verbose(`  file ${typePast}`);
