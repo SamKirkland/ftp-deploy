@@ -139,7 +139,7 @@ export class FTPSyncProvider implements ISyncProvider {
                     
                     await retryRequest(this.logger, async () => await this.client.removeDir(path.folders!.join("/") + "/"));
                 } catch (e) {
-                    this.logger.all(`Error 550removing folder ${folderPath}. Skipping...`)
+                    this.logger.all(`Error 550 removing folder ${folderPath}. Skipping...`)
                 }
             }
         }
@@ -210,7 +210,8 @@ export class FTPSyncProvider implements ISyncProvider {
         this.logger.all(`----------------------------------------------------------------`);
         this.logger.all(`🎉 Sync complete. Saving current server state to "${this.serverPath + this.stateName}"`);
         if (this.dryRun === false) {
-            await retryRequest(this.logger, async () => await this.client.uploadFrom(this.localPath + this.stateName, this.stateName));
+            await retryRequest(this.logger, async () => await this.removeFile(this.stateName));
+            await retryRequest(this.logger, async () => await this.uploadFile(this.stateName, "replace"));
         }
     }
 }
