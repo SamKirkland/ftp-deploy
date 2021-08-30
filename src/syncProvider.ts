@@ -150,7 +150,13 @@ export class FTPSyncProvider implements ISyncProvider {
         this.logger.all(`${typePresent} "${filePath}"`);
 
         if (this.dryRun === false) {
-            await retryRequest(this.logger, async () => await this.client.uploadFrom(this.localPath + filePath, filePath));
+            try {
+                await retryRequest(this.logger, async () => await this.client.uploadFrom(this.localPath + filePath, filePath));
+            } catch (e) {
+                if (e.code === 550) {
+                    this.logger.all(`Error 550 when ${typePresent} ${filePath}. Skipping file.`)
+                }
+            }
         }
 
         this.logger.verbose(`  file ${typePast}`);
