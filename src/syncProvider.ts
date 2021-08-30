@@ -2,6 +2,7 @@ import prettyBytes from "pretty-bytes";
 import type * as ftp from "basic-ftp";
 import { DiffResult, ErrorCode, IFilePath } from "./types";
 import { ILogger, pluralize, retryRequest, ITimings } from "./utilities";
+import path from 'path'
 
 export async function ensureDir(client: ftp.Client, logger: ILogger, timings: ITimings, folder: string): Promise<void> {
     timings.start("changingDir");
@@ -134,7 +135,12 @@ export class FTPSyncProvider implements ISyncProvider {
         else {
             this.logger.verbose(`  removing folder "${path.folders.join("/") + "/"}"`);
             if (this.dryRun === false) {
-                await retryRequest(this.logger, async () => await this.client.removeDir(path.folders!.join("/") + "/"));
+                try {
+                    
+                    await retryRequest(this.logger, async () => await this.client.removeDir(path.folders!.join("/") + "/"));
+                } catch (e) {
+                    this.logger.all(`Error 550removing folder ${folderPath}. Skipping...`)
+                }
             }
         }
 
@@ -156,7 +162,7 @@ export class FTPSyncProvider implements ISyncProvider {
             } catch (e) {
                 if (e.code === 550) {
                     // Folder doesn't exist
-                    await this.createFolder(filePath);
+                    await this.createFolder(path.dirname(filePath));
                     await fileUploadRequest();
                 } else {
                     throw e;
