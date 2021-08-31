@@ -144,8 +144,12 @@ export class FTPSyncProvider implements ISyncProvider {
             }
         }
 
-        // navigate back to the root folder
-        await this.upDir(path.folders?.length);
+        try {
+            // navigate back to the root folder
+            await this.upDir(path.folders?.length);
+        } catch (e) {
+            this.logger.all(`Error navigating up a folder when removing ${folderPath}`)
+        }        
 
         this.logger.verbose(`  completed`);
     }
