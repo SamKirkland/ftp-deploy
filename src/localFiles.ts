@@ -1,13 +1,13 @@
 import readdir, { Stats } from "@jsdevtools/readdir-enhanced";
 import { Record, IFileList, syncFileDescription, currentSyncFileVersion, IFtpDeployArgumentsWithDefaults } from "./types";
 import { fileHash } from "./HashDiff";
-import multiMatch from "multimatch";
+import multimatch from "multimatch";
 
 export function applyExcludeFilter(stat: Stats, excludeFilter: string[]) {
     // match exclude, return immediatley
     if (excludeFilter.length > 0) {
         const pathWithFolderSlash = stat.path + (stat.isDirectory() ? "/" : "");
-        const excludeMatch = multiMatch(pathWithFolderSlash, excludeFilter, { matchBase: true, dot: true });
+        const excludeMatch = multimatch(pathWithFolderSlash, excludeFilter, { matchBase: true, dot: true });
 
         if (excludeMatch.length > 0) {
             return false;
