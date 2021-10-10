@@ -1,7 +1,7 @@
 import readdir, { Stats } from "@jsdevtools/readdir-enhanced";
 import { Record, IFileList, syncFileDescription, currentSyncFileVersion, IFtpDeployArgumentsWithDefaults } from "./types";
 import { fileHash } from "./HashDiff";
-import multiMatch from "multiMatch";
+import multiMatch from "multimatch";
 
 export function applyExcludeFilter(stat: Stats, excludeFilter: string[]) {
     // match exclude, return immediatley
