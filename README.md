@@ -12,10 +12,10 @@ After the initial sync only differences are synced, making deployments super fas
 ## How to Run
 #### Option 1 - Run via command line
 - Install the npm package using `npm install @samkirkland/ftp-deploy --only=dev`
-- Run via command line `npm run ftp-deploy --server ftp.samkirkland.com --username test@samkirkland.com --password \"CrazyUniquePassword&%123\"`
+- Run via command line `ftp-deploy --server ftp.samkirkland.com --username test@samkirkland.com --password \"CrazyUniquePassword&%123\"`
 
 - **Or you can add a script to make deployments easier**
-- Add a new key to your `package.json` file under `scripts`
+- Add a new key to your `package.json` file under `scripts` section. See example below.
 - You can run the script using the following command `npm run deploy` (run this in the folder that has the `package.json` file)
 
 Example of `package.json`:
@@ -56,6 +56,8 @@ If you use github as source control you can automatically re-deploy your site on
 ---
 
 ## Settings
+
+To list all commands with examples simply run `ftp-deploy` without any options.
 
 | Key Name                  | Required | Example                    | Default Value                                 | Description                                                                                                                                                        |
 |---------------------------|----------|----------------------------|-----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
