@@ -404,6 +404,70 @@ describe("FTP sync commands", () => {
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(1);
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/state-name", "state-name");
     });
+
+    test("remove folder", async () => {
+        const hashDiff = new HashDiff();
+        const localFiles: IFileList = {
+            version: currentSyncFileVersion,
+            description: "",
+            generatedTime: new Date().getTime(),
+            data: []
+        };
+        const serverFiles: IFileList = {
+            version: currentSyncFileVersion,
+            description: "",
+            generatedTime: new Date().getTime(),
+            data: [
+                {
+                    type: "folder",
+                    size: undefined,
+                    name: "path/folder/",
+                },
+                {
+                    type: "folder",
+                    size: undefined,
+                    name: "baseFolder/",
+                }
+            ]
+        };
+        const diffs = hashDiff.getDiffs(localFiles, serverFiles, mockedLogger);
+
+        expect(diffs.upload.length).toEqual(0);
+        expect(diffs.delete.length).toEqual(2);
+        expect(diffs.replace.length).toEqual(0);
+
+        expect(diffs.sizeUpload).toEqual(0);
+        expect(diffs.sizeDelete).toEqual(0);
+        expect(diffs.sizeReplace).toEqual(0);
+
+        const mockClient = {
+            ensureDir() { },
+            remove() { },
+            removeDir() { },
+            uploadFrom() { },
+            cdup() { },
+        };
+        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false);
+        const spyRemoveFolder = jest.spyOn(syncProvider, "removeFolder");
+        const mockClientRemove = jest.spyOn(mockClient, "remove");
+        const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
+        const mockClientRemoveDir = jest.spyOn(mockClient, "removeDir");
+        await syncProvider.syncLocalToServer(diffs);
+
+        expect(spyRemoveFolder).toHaveBeenCalledTimes(2);
+        expect(spyRemoveFolder).toHaveBeenCalledWith("path/folder/");
+        expect(spyRemoveFolder).toHaveBeenCalledWith("baseFolder/");
+
+        // relative paths should be used because we are already in the parent folder
+        expect(mockClientRemoveDir).toHaveBeenCalledTimes(2);
+        expect(mockClientRemoveDir).toHaveBeenNthCalledWith(1, "baseFolder/");
+        expect(mockClientRemoveDir).toHaveBeenNthCalledWith(2, "folder/");
+
+        expect(mockClientRemove).toHaveBeenCalledTimes(0);
+
+        expect(mockClientUploadFrom).toHaveBeenCalledTimes(1);
+        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/state-name", "state-name");
+    });
 });
 
 class MockedStats implements readdirStats {
