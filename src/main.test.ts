@@ -1,5 +1,5 @@
 import { HashDiff } from "./HashDiff";
-import { IFileList, currentSyncFileVersion } from "./types";
+import { IFileList, currentSyncFileVersion, IFile } from "./types";
 import { Record } from "./types";
 import { getDefaultSettings, ILogger, Timings } from "./utilities";
 import path from "path";
@@ -545,6 +545,7 @@ describe("getLocalFiles", () => {
             security: "loose",
         });
 
+        const mainYamlDiff = localDirDiffs.data.find(diff => diff.name === "workflows/main.yml")! as IFile;
         expect(localDirDiffs.data).toEqual([
             {
                 type: "folder",
@@ -554,8 +555,8 @@ describe("getLocalFiles", () => {
             {
                 type: "file",
                 name: "workflows/main.yml",
-                size: 410,
-                hash: "356464bef208ba0862c358f06d087b20f2b1073809858dd9c69fc2bc2894619f"
+                size: mainYamlDiff.size,
+                hash: mainYamlDiff.hash
             }
         ] as Record[]);
     });
