@@ -178,6 +178,7 @@ export function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDe
         "local-dir": withoutDefaults["local-dir"] ?? "./",
         "server-dir": withoutDefaults["server-dir"] ?? "./",
         "state-name": withoutDefaults["state-name"] ?? ".ftp-deploy-sync-state.json",
+        "force": withoutDefaults["force"] ?? false,
         "dry-run": withoutDefaults["dry-run"] ?? false,
         "dangerous-clean-slate": withoutDefaults["dangerous-clean-slate"] ?? false,
         "exclude": withoutDefaults.exclude ?? excludeDefaults,

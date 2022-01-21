@@ -32,6 +32,12 @@ export interface IFtpDeployArguments {
     "state-name"?: string;
 
     /**
+     * Force the deploy process, cleaning the "state-name" file and doing the deploy from scratch
+     * @default false
+     */
+    "force"?: boolean;
+
+    /**
      * Prints which modifications will be made with current config options, but doesn't actually make any changes
      * @default false
      */
@@ -74,6 +80,7 @@ export interface IFtpDeployArgumentsWithDefaults {
     "local-dir": string;
     "server-dir": string;
     "state-name": string;
+    "force": boolean;
     "dry-run": boolean;
     "dangerous-clean-slate": boolean;
     exclude: string[];

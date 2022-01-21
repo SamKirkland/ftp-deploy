@@ -77,6 +77,13 @@ async function getServerFiles(client: ftp.Client, logger: ILogger, timings: ITim
             logger.all("Clear complete");
 
             throw new Error("nope");
+        } else if (args["force"]) {
+            logger.all(`----------------------------------------------------------------`);
+            logger.all(`🗑️ Removing local state at ${args["local-dir"]}${args["state-name"]} because 'force' was set, this will make the deployment very slow...`);
+            await client.remove(`${args["local-dir"]}${args["state-name"]}`);
+            logger.all("Local state removed");
+
+            throw new Error("nope");
         }
 
         const serverFiles = await downloadFileList(client, logger, args["state-name"]);

@@ -12,6 +12,7 @@ const argv = yargs.options({
     "local-dir": { type: "string", default: "./" },
     "server-dir": { type: "string", default: "./" },
     "state-name": { type: "string", default: ".ftp-deploy-sync-state.json" },
+    "force": { type: "boolean", default: false, description: "Force the deploy process, cleaning the 'state-name' file and doing the deploy from scratch" },
     "dry-run": { type: "boolean", default: false, description: "Prints which modifications will be made with current config options, but doesn't actually make any changes" },
     "dangerous-clean-slate": { type: "boolean", default: false, description: "Deletes ALL contents of server-dir, even items in excluded with 'exclude' argument" },
     "exclude": { type: "array", default: excludeDefaults, description: "An array of glob patterns, these files will not be included in the publish/delete process" },
