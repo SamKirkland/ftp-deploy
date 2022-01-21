@@ -538,6 +538,7 @@ describe("getLocalFiles", () => {
             "local-dir": "./.github/",
             "server-dir": "./",
             "state-name": ".ftp-deploy-sync-state.json",
+            "force": false,
             "dry-run": true,
             "dangerous-clean-slate": false,
             exclude: [],
