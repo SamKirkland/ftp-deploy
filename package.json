@@ -1,6 +1,6 @@
 {
   "name": "@samkirkland/ftp-deploy",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "private": false,
   "description": "Deploy files to a ftp server",
   "main": "dist/module.js",
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "deploy": "tsc && node ./dist/cli.js --log-level verbose ---server samkirkland.com --protocol ftp --username \"ftp-deploy@samkirkland.com\" --password \"actualPasswordHere\" --exclude dist/** --exclude **/.git* --exclude **/.git*/** --exclude **/node_modules/**",
+    "deploy": "tsc && node ./dist/cli.js --log-level verbose ---server samkirkland.com --protocol ftp --username \"ftp-deploy@samkirkland.com\" --password \"actualPasswordHere\" --exclude dist/** --exclude **/.git* --exclude **/.git*/** --exclude **/node_modules/** --exclude package.json",
     "lint": "eslint src/**/*.ts",
     "test": "jest",
     "test-watch": "jest --watch"
