@@ -2,7 +2,7 @@ import * as ftp from "basic-ftp";
 import fs from "fs";
 import { IFileList, IDiff, syncFileDescription, currentSyncFileVersion, IFtpDeployArgumentsWithDefaults } from "./types";
 import { HashDiff } from "./HashDiff";
-import { ILogger, retryRequest, ITimings } from "./utilities";
+import { ILogger, retryRequest, ITimings, applyExcludeFilter, formatNumber } from "./utilities";
 import prettyBytes from "pretty-bytes";
 import { prettyError } from "./errorHandling";
 import { ensureDir, FTPSyncProvider } from "./syncProvider";
@@ -83,6 +83,12 @@ async function getServerFiles(client: ftp.Client, logger: ILogger, timings: ITim
         logger.all(`----------------------------------------------------------------`);
         logger.all(`Last published on 📅 ${new Date(serverFiles.generatedTime).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "numeric" })}`);
 
+        // apply exclude options to server
+        if (args.exclude.length > 0) {
+            const filteredData = serverFiles.data.filter((item) => applyExcludeFilter({ path: item.name, isDirectory: () => item.type === "folder" }, args.exclude));
+            serverFiles.data = filteredData;
+        }
+
         return serverFiles;
     }
     catch (error) {
@@ -136,8 +142,43 @@ export async function deploy(args: IFtpDeployArgumentsWithDefaults, logger: ILog
 
         timings.start("logging");
         const diffTool: IDiff = new HashDiff();
-        const diffs = diffTool.getDiffs(localFiles, serverFiles, logger);
+
+        logger.standard(`----------------------------------------------------------------`);
+        logger.standard(`Local Files:\t${formatNumber(localFiles.data.length)}`);
+        logger.standard(`Server Files:\t${formatNumber(serverFiles.data.length)}`);
+        logger.standard(`----------------------------------------------------------------`);
+        logger.standard(`Calculating differences between client & server`);
+        logger.standard(`----------------------------------------------------------------`);
+
+        const diffs = diffTool.getDiffs(localFiles, serverFiles);
+
+        diffs.upload.filter((itemUpload) => itemUpload.type === "folder").map((itemUpload) => {
+            logger.standard(`📁 Create: ${itemUpload.name}`);
+        });
+
+        diffs.upload.filter((itemUpload) => itemUpload.type === "file").map((itemUpload) => {
+            logger.standard(`📄 Upload: ${itemUpload.name}`);
+        });
+
+        diffs.replace.map((itemReplace) => {
+            logger.standard(`🔁 File replace: ${itemReplace.name}`);
+        });
+
+        diffs.delete.filter((itemUpload) => itemUpload.type === "file").map((itemDelete) => {
+            logger.standard(`📄 Delete: ${itemDelete.name}    `);
+        });
+
+        diffs.delete.filter((itemUpload) => itemUpload.type === "folder").map((itemDelete) => {
+            logger.standard(`📁 Delete: ${itemDelete.name}    `);
+        });
+
+        diffs.same.map((itemSame) => {
+            if (itemSame.type === "file") {
+                logger.standard(`⚖️  File content is the same, doing nothing: ${itemSame.name}`);
+            }
+        });
         timings.stop("logging");
+
 
         totalBytesUploaded = diffs.sizeUpload + diffs.sizeReplace;
 
@@ -166,7 +207,7 @@ export async function deploy(args: IFtpDeployArgumentsWithDefaults, logger: ILog
     logger.all(`----------------------------------------------------------------`);
     logger.all(`Time spent hashing: ${timings.getTimeFormatted("hash")}`);
     logger.all(`Time spent connecting to server: ${timings.getTimeFormatted("connecting")}`);
-    logger.all(`Time spent deploying: ${timings.getTimeFormatted("upload")}(${uploadSpeed} / second)`);
+    logger.all(`Time spent deploying: ${timings.getTimeFormatted("upload")} (${uploadSpeed}/second)`);
     logger.all(`  - changing dirs: ${timings.getTimeFormatted("changingDir")}`);
     logger.all(`  - logging: ${timings.getTimeFormatted("logging")}`);
     logger.all(`----------------------------------------------------------------`);

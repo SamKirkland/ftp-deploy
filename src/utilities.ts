@@ -1,6 +1,7 @@
 import prettyMilliseconds from "pretty-ms";
 import { excludeDefaults } from "./module";
 import { ErrorCode, IFtpDeployArguments, IFtpDeployArgumentsWithDefaults } from "./types";
+import multimatch from "multimatch";
 
 export interface ILogger {
     all(...data: any[]): void;
@@ -40,6 +41,10 @@ export function pluralize(count: number, singular: string, plural: string) {
     return plural;
 }
 
+export function formatNumber(number: number): string {
+    return number.toLocaleString();
+}
+
 /**
  * retry a request
  * 
@@ -49,7 +54,7 @@ export async function retryRequest<T>(logger: ILogger, callback: () => Promise<T
     try {
         return await callback();
     }
-    catch (e) {
+    catch (e: any) {
         if (e.code >= 400 && e.code <= 499) {
             logger.standard("400 level error from server when performing action - retrying...");
             logger.standard(e);
@@ -180,8 +185,37 @@ export function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDe
         "state-name": withoutDefaults["state-name"] ?? ".ftp-deploy-sync-state.json",
         "dry-run": withoutDefaults["dry-run"] ?? false,
         "dangerous-clean-slate": withoutDefaults["dangerous-clean-slate"] ?? false,
-        "exclude": withoutDefaults.exclude ?? excludeDefaults,
+        "exclude": applyFolderFiltersToSubItems(withoutDefaults.exclude ?? excludeDefaults),
         "log-level": withoutDefaults["log-level"] ?? "standard",
         "security": withoutDefaults.security ?? "loose",
     };
+}
+
+/**
+ * automatically exclude all sub-files/sub-folders if we exclude a folder.
+ * For example "test/" should also exclude "test/file.txt"
+ * to do this we add "**" to all folder paths
+ */
+export function applyFolderFiltersToSubItems(excludeFilters: Readonly<string[]>) {
+    return excludeFilters.map(filter => filter.endsWith("/") ? `${filter}**` : filter);
+}
+
+interface IStats {
+    path: string;
+    isDirectory(): boolean;
+}
+
+export function applyExcludeFilter(stat: IStats, excludeFilters: Readonly<string[]>): boolean {
+    // match exclude, return immediatley
+    if (excludeFilters.length > 0) {
+        // todo this could be a performance problem...
+        const pathWithFolderSlash = stat.path + (stat.isDirectory() ? "/" : "");
+        const excludeMatch = multimatch(pathWithFolderSlash, excludeFilters, { matchBase: true, dot: true });
+
+        if (excludeMatch.length > 0) {
+            return false;
+        }
+    }
+
+    return true;
 }

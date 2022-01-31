@@ -108,7 +108,7 @@ export class FTPSyncProvider implements ISyncProvider {
             try {
                 await retryRequest(this.logger, async () => await this.client.remove(filePath));
             }
-            catch (e) {
+            catch (e: any) {
                 // this error is common when a file was deleted on the server directly
                 if (e.code === ErrorCode.FileNotFoundOrNoAccess) {
                     this.logger.standard("File not found or you don't have access to the file - skipping...");
@@ -124,23 +124,12 @@ export class FTPSyncProvider implements ISyncProvider {
     }
 
     async removeFolder(folderPath: string) {
-        this.logger.all(`removing folder "${folderPath + "/"}"`);
+        const absoluteFolderPath = "/" + (this.serverPath.startsWith("./") ? this.serverPath.replace("./", "") : this.serverPath) + folderPath;
+        this.logger.all(`removing folder "${absoluteFolderPath}"`);
 
-        const path = this.getFileBreadcrumbs(folderPath + "/");
-
-        if (path.folders === null) {
-            this.logger.verbose(`  no need to change dir`);
+        if (this.dryRun === false) {
+            await retryRequest(this.logger, async () => await this.client.removeDir(absoluteFolderPath));
         }
-        else {
-            const relativeFolderPath = path.folders[path.folders?.length - 1]! + "/";
-            this.logger.verbose(`  removing folder "${relativeFolderPath}"`);
-            if (this.dryRun === false) {
-                await retryRequest(this.logger, async () => await this.client.removeDir(relativeFolderPath));
-            }
-        }
-
-        // navigate back to the root folder
-        await this.upDir(path.folders?.length);
 
         this.logger.verbose(`  completed`);
     }

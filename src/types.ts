@@ -1,5 +1,3 @@
-import { ILogger } from "./utilities";
-
 export const currentSyncFileVersion = "1.0.0";
 export const syncFileDescription = "DO NOT DELETE THIS FILE. This file is used to keep track of which files have been synced in the most recent deployment. If you delete this file a resync will need to be done (which can take a while) - read more: https://github.com/SamKirkland/FTP-Deploy-Action";
 
@@ -112,6 +110,7 @@ export type DiffResult = {
     upload: Record[];
     delete: Record[];
     replace: Record[];
+    same: Record[];
 
     /** number of bytes that will need to be uploaded */
     sizeUpload: number;
@@ -124,7 +123,7 @@ export type DiffResult = {
 }
 
 export interface IDiff {
-    getDiffs(localFiles: IFileList, serverFiles: IFileList, logger: ILogger): DiffResult;
+    getDiffs(localFiles: IFileList, serverFiles: IFileList): DiffResult;
 }
 
 export interface IFilePath {

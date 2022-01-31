@@ -1,10 +1,10 @@
 import { HashDiff } from "./HashDiff";
 import { IFileList, currentSyncFileVersion, IFile } from "./types";
 import { Record } from "./types";
-import { getDefaultSettings, ILogger, Timings } from "./utilities";
+import { applyExcludeFilter, applyFolderFiltersToSubItems, getDefaultSettings, ILogger, Timings } from "./utilities";
 import path from "path";
 import FtpSrv from "ftp-srv";
-import { applyExcludeFilter, getLocalFiles } from "./localFiles";
+import { getLocalFiles } from "./localFiles";
 import { FTPSyncProvider } from "./syncProvider";
 import { deploy } from "./deploy";
 import { Stats as readdirStats } from "@jsdevtools/readdir-enhanced";
@@ -85,7 +85,7 @@ describe("HashDiff", () => {
     const minimalFileList: IFileList = { version: currentSyncFileVersion, description: "", generatedTime: new Date().getTime(), data: tenFiles };
 
     test("Empty Client, Empty Server", () => {
-        const diffs = thing.getDiffs(emptyFileList, emptyFileList, new MockedLogger());
+        const diffs = thing.getDiffs(emptyFileList, emptyFileList);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(0);
@@ -97,7 +97,7 @@ describe("HashDiff", () => {
     });
 
     test("Minimal Client, Empty Server", () => {
-        const diffs = thing.getDiffs(minimalFileList, emptyFileList, new MockedLogger());
+        const diffs = thing.getDiffs(minimalFileList, emptyFileList);
 
         expect(diffs.upload.length).toEqual(10);
         expect(diffs.delete.length).toEqual(0);
@@ -109,7 +109,7 @@ describe("HashDiff", () => {
     });
 
     test("Empty Client, Minimal Server", () => {
-        const diffs = thing.getDiffs(emptyFileList, minimalFileList, new MockedLogger());
+        const diffs = thing.getDiffs(emptyFileList, minimalFileList);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(10);
@@ -121,7 +121,7 @@ describe("HashDiff", () => {
     });
 
     test("Minimal Client, Minimal Server - No Diffs", () => {
-        const diffs = thing.getDiffs(minimalFileList, minimalFileList, new MockedLogger());
+        const diffs = thing.getDiffs(minimalFileList, minimalFileList);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(0);
@@ -145,7 +145,7 @@ describe("HashDiff", () => {
                 }
             ]
         };
-        const diffs = thing.getDiffs(minimalFileList2, minimalFileList, new MockedLogger());
+        const diffs = thing.getDiffs(minimalFileList2, minimalFileList);
 
         expect(diffs.upload.length).toEqual(1);
         expect(diffs.delete.length).toEqual(0);
@@ -169,10 +169,56 @@ describe("HashDiff", () => {
                 }
             ]
         };
-        const diffs = thing.getDiffs(minimalFileList, minimalFileList2, new MockedLogger());
+        const diffs = thing.getDiffs(minimalFileList, minimalFileList2);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(1);
+        expect(diffs.replace.length).toEqual(0);
+
+        expect(diffs.sizeUpload).toEqual(0);
+        expect(diffs.sizeDelete).toEqual(1000);
+        expect(diffs.sizeReplace).toEqual(0);
+    });
+
+    test("Delete folder with nested content", () => {
+        const clientState: IFileList = {
+            ...emptyFileList,
+            data: [
+                {
+                    type: "folder",
+                    name: "folder/",
+                    size: undefined,
+                }
+            ]
+        };
+
+        const serverState: IFileList = {
+            ...emptyFileList,
+            data: [
+                {
+                    type: "folder",
+                    name: "folder/",
+                    size: undefined,
+                },
+                {
+                    type: "folder",
+                    name: "folder/subFolder/",
+                    size: undefined,
+                },
+                {
+                    type: "file",
+                    name: "folder/subFolder/file.txt",
+                    size: 1000,
+                    hash: "fakeHashContent"
+                }
+            ]
+        };
+
+        const diffs = thing.getDiffs(clientState, serverState);
+
+        expect(diffs.upload.length).toEqual(0);
+        expect(diffs.delete.length).toEqual(1);
+        expect(diffs.delete).toStrictEqual([{ type: "folder", name: "folder/subFolder/", size: undefined }]);
         expect(diffs.replace.length).toEqual(0);
 
         expect(diffs.sizeUpload).toEqual(0);
@@ -206,7 +252,7 @@ describe("FTP sync commands", () => {
             generatedTime: new Date().getTime(),
             data: []
         };
-        const diffs = hashDiff.getDiffs(localFiles, serverFiles, mockedLogger);
+        const diffs = hashDiff.getDiffs(localFiles, serverFiles);
 
         expect(diffs.upload.length).toEqual(1);
         expect(diffs.delete.length).toEqual(0);
@@ -261,7 +307,7 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const diffs = hashDiff.getDiffs(localFiles, serverFiles, mockedLogger);
+        const diffs = hashDiff.getDiffs(localFiles, serverFiles);
 
         expect(diffs.upload.length).toEqual(1);
         expect(diffs.delete.length).toEqual(1);
@@ -325,7 +371,7 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const diffs = hashDiff.getDiffs(localFiles, serverFiles, mockedLogger);
+        const diffs = hashDiff.getDiffs(localFiles, serverFiles);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(0);
@@ -374,7 +420,7 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const diffs = hashDiff.getDiffs(localFiles, serverFiles, mockedLogger);
+        const diffs = hashDiff.getDiffs(localFiles, serverFiles);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(1);
@@ -430,7 +476,7 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const diffs = hashDiff.getDiffs(localFiles, serverFiles, mockedLogger);
+        const diffs = hashDiff.getDiffs(localFiles, serverFiles);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(2);
@@ -458,10 +504,10 @@ describe("FTP sync commands", () => {
         expect(spyRemoveFolder).toHaveBeenCalledWith("path/folder/");
         expect(spyRemoveFolder).toHaveBeenCalledWith("baseFolder/");
 
-        // relative paths should be used because we are already in the parent folder
+        // these paths should be absolute
         expect(mockClientRemoveDir).toHaveBeenCalledTimes(2);
-        expect(mockClientRemoveDir).toHaveBeenNthCalledWith(1, "baseFolder/");
-        expect(mockClientRemoveDir).toHaveBeenNthCalledWith(2, "folder/");
+        expect(mockClientRemoveDir).toHaveBeenNthCalledWith(2, "/server-dir/path/folder/");
+        expect(mockClientRemoveDir).toHaveBeenNthCalledWith(1, "/server-dir/baseFolder/");
 
         expect(mockClientRemove).toHaveBeenCalledTimes(0);
 
@@ -569,7 +615,7 @@ describe("getLocalFiles", () => {
             new MockedStats("node_modules/@samkirkland/"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, excludeDefaults));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(excludeDefaults)));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/sam"]);
     });
@@ -586,7 +632,7 @@ describe("getLocalFiles", () => {
             new MockedStats("test/.git/workflows/main.yml"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, excludeDefaults));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(excludeDefaults)));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/sam"]);
     });
@@ -606,7 +652,7 @@ describe("getLocalFiles", () => {
             new MockedStats("node_modules/@samkirkland/"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, []));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems([])));
 
         expect(filteredStats.length).toBe(11);
     });
@@ -617,7 +663,7 @@ describe("getLocalFiles", () => {
             new MockedStats("test/folder/"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, ["*.js"]));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(["*.js"])));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/folder/"]);
     });
@@ -628,7 +674,44 @@ describe("getLocalFiles", () => {
             new MockedStats("test/folder/"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, ["**/folder/**"]));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(["**/folder/**"])));
+
+        expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
+    });
+
+    test("exclude existing folder", async () => {
+        const files: MockedStats[] = [
+            new MockedStats("test/test.js"),
+            new MockedStats("test/folder/"),
+        ];
+
+        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(["**/folder/**"])));
+
+        expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
+    });
+
+    test("exclude existing folder while adding new file", async () => {
+        const files: MockedStats[] = [
+            new MockedStats("test/test.js"),
+            new MockedStats("test/folder/"),
+            new MockedStats("test/folder/newfile.js"),
+        ];
+
+        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(["test/folder/**"])));
+
+        expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
+    });
+
+    test("exclude existing folder while adding new file", async () => {
+        const files: MockedStats[] = [
+            new MockedStats("test/test.js"),
+            new MockedStats("test/folder/"),
+            new MockedStats("test/folder/subFolder/"),
+            new MockedStats("test/folder/newfile.js"),
+            new MockedStats("test/folder/sub/sub/sub/sub/newfile.js"),
+        ];
+
+        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(["test/folder/"])));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
     });
