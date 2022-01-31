@@ -185,19 +185,10 @@ export function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDe
         "state-name": withoutDefaults["state-name"] ?? ".ftp-deploy-sync-state.json",
         "dry-run": withoutDefaults["dry-run"] ?? false,
         "dangerous-clean-slate": withoutDefaults["dangerous-clean-slate"] ?? false,
-        "exclude": applyFolderFiltersToSubItems(withoutDefaults.exclude ?? excludeDefaults),
+        "exclude": withoutDefaults.exclude ?? excludeDefaults,
         "log-level": withoutDefaults["log-level"] ?? "standard",
         "security": withoutDefaults.security ?? "loose",
     };
-}
-
-/**
- * automatically exclude all sub-files/sub-folders if we exclude a folder.
- * For example "test/" should also exclude "test/file.txt"
- * to do this we add "**" to all folder paths
- */
-export function applyFolderFiltersToSubItems(excludeFilters: Readonly<string[]>) {
-    return excludeFilters.map(filter => filter.endsWith("/") ? `${filter}**` : filter);
 }
 
 interface IStats {

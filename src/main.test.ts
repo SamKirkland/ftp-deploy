@@ -1,7 +1,7 @@
 import { HashDiff } from "./HashDiff";
 import { IFileList, currentSyncFileVersion, IFile } from "./types";
 import { Record } from "./types";
-import { applyExcludeFilter, applyFolderFiltersToSubItems, getDefaultSettings, ILogger, Timings } from "./utilities";
+import { applyExcludeFilter, getDefaultSettings, ILogger, Timings } from "./utilities";
 import path from "path";
 import FtpSrv from "ftp-srv";
 import { getLocalFiles } from "./localFiles";
@@ -615,7 +615,7 @@ describe("getLocalFiles", () => {
             new MockedStats("node_modules/@samkirkland/"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(excludeDefaults)));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, excludeDefaults));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/sam"]);
     });
@@ -632,7 +632,7 @@ describe("getLocalFiles", () => {
             new MockedStats("test/.git/workflows/main.yml"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(excludeDefaults)));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, excludeDefaults));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/sam"]);
     });
@@ -652,7 +652,7 @@ describe("getLocalFiles", () => {
             new MockedStats("node_modules/@samkirkland/"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems([])));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, []));
 
         expect(filteredStats.length).toBe(11);
     });
@@ -663,7 +663,7 @@ describe("getLocalFiles", () => {
             new MockedStats("test/folder/"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(["*.js"])));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, ["*.js"]));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/folder/"]);
     });
@@ -674,7 +674,7 @@ describe("getLocalFiles", () => {
             new MockedStats("test/folder/"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(["**/folder/**"])));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, ["**/folder/**"]));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
     });
@@ -685,7 +685,7 @@ describe("getLocalFiles", () => {
             new MockedStats("test/folder/"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(["**/folder/**"])));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, ["**/folder/**"]));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
     });
@@ -697,21 +697,7 @@ describe("getLocalFiles", () => {
             new MockedStats("test/folder/newfile.js"),
         ];
 
-        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(["test/folder/**"])));
-
-        expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
-    });
-
-    test("exclude existing folder while adding new file", async () => {
-        const files: MockedStats[] = [
-            new MockedStats("test/test.js"),
-            new MockedStats("test/folder/"),
-            new MockedStats("test/folder/subFolder/"),
-            new MockedStats("test/folder/newfile.js"),
-            new MockedStats("test/folder/sub/sub/sub/sub/newfile.js"),
-        ];
-
-        const filteredStats = files.filter(file => applyExcludeFilter(file, applyFolderFiltersToSubItems(["test/folder/"])));
+        const filteredStats = files.filter(file => applyExcludeFilter(file, ["test/folder/**"]));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
     });
