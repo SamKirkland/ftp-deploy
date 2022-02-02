@@ -184,7 +184,7 @@ export async function deploy(args: IFtpDeployArgumentsWithDefaults, logger: ILog
 
         timings.start("upload");
         try {
-            const syncProvider = new FTPSyncProvider(client, logger, timings, args["local-dir"], args["server-dir"], args["state-name"], args["dry-run"]);
+            const syncProvider = new FTPSyncProvider(client, logger, timings, args["local-dir"], args["server-dir"], args["state-name"], args["dry-run"], args["sync-posix-modes"]);
             await syncProvider.syncLocalToServer(diffs);
         }
         finally {

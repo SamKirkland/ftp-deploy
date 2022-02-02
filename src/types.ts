@@ -36,6 +36,13 @@ export interface IFtpDeployArguments {
     "dry-run"?: boolean;
 
     /**
+     * Tries to sync posix file modes to server. Only works for new or updated files.
+     * Note: Not all FTP servers support settings POSIX file modes.
+     * @default false
+     */
+    "sync-posix-modes"?: boolean;
+
+    /**
      * Deletes ALL contents of server-dir, even items in excluded with 'exclude' argument
      * @default false
      */
@@ -73,6 +80,7 @@ export interface IFtpDeployArgumentsWithDefaults {
     "server-dir": string;
     "state-name": string;
     "dry-run": boolean;
+    "sync-posix-modes": boolean;
     "dangerous-clean-slate": boolean;
     exclude: string[];
     "log-level": "minimal" | "standard" | "verbose";

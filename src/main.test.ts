@@ -266,7 +266,7 @@ describe("FTP sync commands", () => {
             ensureDir() { },
             uploadFrom() { },
         };
-        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false);
+        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
         const spyRemoveFile = jest.spyOn(syncProvider, "uploadFile");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
         await syncProvider.syncLocalToServer(diffs);
@@ -322,7 +322,7 @@ describe("FTP sync commands", () => {
             remove() { },
             uploadFrom() { },
         };
-        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false);
+        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
         const spyUploadFile = jest.spyOn(syncProvider, "uploadFile");
         const spyRemoveFile = jest.spyOn(syncProvider, "removeFile");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
@@ -386,7 +386,7 @@ describe("FTP sync commands", () => {
             remove() { },
             uploadFrom() { },
         };
-        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false);
+        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
         const spyUploadFile = jest.spyOn(syncProvider, "uploadFile");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
         await syncProvider.syncLocalToServer(diffs);
@@ -435,7 +435,7 @@ describe("FTP sync commands", () => {
             remove() { },
             uploadFrom() { },
         };
-        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false);
+        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
         const spyRemoveFile = jest.spyOn(syncProvider, "removeFile");
         const mockClientRemove = jest.spyOn(mockClient, "remove");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
@@ -493,7 +493,7 @@ describe("FTP sync commands", () => {
             uploadFrom() { },
             cdup() { },
         };
-        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false);
+        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
         const spyRemoveFolder = jest.spyOn(syncProvider, "removeFolder");
         const mockClientRemove = jest.spyOn(mockClient, "remove");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
@@ -589,6 +589,7 @@ describe("getLocalFiles", () => {
             exclude: [],
             "log-level": "standard",
             security: "loose",
+            "sync-posix-modes": true,
         });
 
         const mainYamlDiff = localDirDiffs.data.find(diff => diff.name === "workflows/main.yml")! as IFile;

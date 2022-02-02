@@ -1,7 +1,12 @@
+import fs from "fs";
+import util from "util";
+
 import prettyBytes from "pretty-bytes";
 import type * as ftp from "basic-ftp";
-import { DiffResult, ErrorCode, IFilePath } from "./types";
+import { DiffResult, ErrorCode, IFilePath, Record } from "./types";
 import { ILogger, pluralize, retryRequest, ITimings } from "./utilities";
+
+const stat = util.promisify(fs.stat);
 
 export async function ensureDir(client: ftp.Client, logger: ILogger, timings: ITimings, folder: string): Promise<void> {
     timings.start("changingDir");
@@ -29,7 +34,7 @@ interface ISyncProvider {
 }
 
 export class FTPSyncProvider implements ISyncProvider {
-    constructor(client: ftp.Client, logger: ILogger, timings: ITimings, localPath: string, serverPath: string, stateName: string, dryRun: boolean) {
+    constructor(client: ftp.Client, logger: ILogger, timings: ITimings, localPath: string, serverPath: string, stateName: string, dryRun: boolean, syncPosixModes: boolean) {
         this.client = client;
         this.logger = logger;
         this.timings = timings;
@@ -37,6 +42,7 @@ export class FTPSyncProvider implements ISyncProvider {
         this.serverPath = serverPath;
         this.stateName = stateName;
         this.dryRun = dryRun;
+        this.syncPosixModes = syncPosixModes;
     }
 
     private client: ftp.Client;
@@ -45,6 +51,7 @@ export class FTPSyncProvider implements ISyncProvider {
     private localPath: string;
     private serverPath: string;
     private dryRun: boolean;
+    private syncPosixModes: boolean;
     private stateName: string;
 
 
@@ -146,6 +153,22 @@ export class FTPSyncProvider implements ISyncProvider {
         this.logger.verbose(`  file ${typePast}`);
     }
 
+    async syncMode(file: Record) {
+        if (!this.syncPosixModes) {
+            return;
+        }
+        this.logger.verbose("Syncing posix mode for file " + file.name);
+        // https://www.martin-brennan.com/nodejs-file-permissions-fstat/
+        let stats = await stat(this.localPath + file.name);
+        let mode: string = "0" + (stats.mode & parseInt('777', 8)).toString(8);
+        // https://github.com/patrickjuchli/basic-ftp/issues/9
+        let command = "SITE CHMOD " + mode + " " + file.name
+        if (this.dryRun === false) {
+            await this.client.ftp.request(command);
+        }
+        this.logger.verbose("Setting file mode with command " + command);
+    }
+
     async syncLocalToServer(diffs: DiffResult) {
         const totalCount = diffs.delete.length + diffs.upload.length + diffs.replace.length;
 
@@ -157,17 +180,20 @@ export class FTPSyncProvider implements ISyncProvider {
         // create new folders
         for (const file of diffs.upload.filter(item => item.type === "folder")) {
             await this.createFolder(file.name);
+            await this.syncMode(file);
         }
 
         // upload new files
         for (const file of diffs.upload.filter(item => item.type === "file").filter(item => item.name !== this.stateName)) {
             await this.uploadFile(file.name, "upload");
+            await this.syncMode(file);
         }
 
         // replace new files
         for (const file of diffs.replace.filter(item => item.type === "file").filter(item => item.name !== this.stateName)) {
             // note: FTP will replace old files with new files. We run replacements after uploads to limit downtime
             await this.uploadFile(file.name, "replace");
+            await this.syncMode(file);
         }
 
         // delete old files
