@@ -152,11 +152,6 @@ export async function deploy(args: IFtpDeployArgumentsWithDefaults, logger: ILog
 
         const diffs = diffTool.getDiffs(localFiles, serverFiles);
 
-        if (args.preserve) {
-            diffs.delete = [];
-            diffs.sizeDelete = 0;
-        }
-
         diffs.upload.filter((itemUpload) => itemUpload.type === "folder").map((itemUpload) => {
             logger.standard(`📁 Create: ${itemUpload.name}`);
         });
