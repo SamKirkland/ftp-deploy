@@ -589,6 +589,7 @@ describe("getLocalFiles", () => {
             exclude: [],
             "log-level": "standard",
             security: "loose",
+            "preserve": false,
         });
 
         const mainYamlDiff = localDirDiffs.data.find(diff => diff.name === "workflows/main.yml")! as IFile;
@@ -754,6 +755,25 @@ describe("Deploy", () => {
             "local-dir": "./",
             "dry-run": true,
             "log-level": "minimal"
+        });
+
+        await deploy(argsWithDefaults, mockedLogger, mockedTimings);
+    }, 30000);
+
+    test("Preserved Deploy", async () => {
+        const mockedLogger = new MockedLogger();
+        const mockedTimings = new Timings();
+
+        const argsWithDefaults = getDefaultSettings({
+            server: "127.0.0.1",
+            username: "testUsername",
+            password: "testPassword",
+            port: port,
+            protocol: "ftp",
+            "local-dir": "./",
+            "dry-run": true,
+            "log-level": "minimal",
+            "preserve": true
         });
 
         await deploy(argsWithDefaults, mockedLogger, mockedTimings);

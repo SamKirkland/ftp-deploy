@@ -61,6 +61,12 @@ export interface IFtpDeployArguments {
      * @default "loose"
      */
     security?: "strict" | "loose";
+
+    /**
+     * Preserve existing files and folders on server instead of deleting them
+     * @default false
+     */
+    "preserve"?: boolean;
 }
 
 export interface IFtpDeployArgumentsWithDefaults {
@@ -77,6 +83,7 @@ export interface IFtpDeployArgumentsWithDefaults {
     exclude: string[];
     "log-level": "minimal" | "standard" | "verbose";
     security: "strict" | "loose";
+    "preserve": boolean;
 }
 
 export interface IFile {
