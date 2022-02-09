@@ -30,7 +30,7 @@ export async function fileHash(filename: string, algorithm: "md5" | "sha1" | "sh
 }
 
 export class HashDiff implements IDiff {
-    getDiffs(localFiles: IFileList, serverFiles: IFileList) {
+    getDiffs(localFiles: IFileList, serverFiles: IFileList, allowUpload = true, allowReplace = true, allowDelete = true) {
         const uploadList: Record[] = [];
         const deleteList: Record[] = [];
         const replaceList: Record[] = [];
@@ -63,13 +63,17 @@ export class HashDiff implements IDiff {
             }
 
             if (fileNameCompare < 0) {
-                uploadList.push(localFile);
-                sizeUpload += localFile.size ?? 0;
+                if (allowUpload) {
+                    uploadList.push(localFile);
+                    sizeUpload += localFile.size ?? 0;
+                }
                 localPosition += 1;
             }
             else if (fileNameCompare > 0) {
-                deleteList.push(serverFile);
-                sizeDelete += serverFile.size ?? 0;
+                if (allowDelete) {
+                    deleteList.push(serverFile);
+                    sizeDelete += serverFile.size ?? 0;
+                }
                 serverPosition += 1;
             }
             else if (fileNameCompare === 0) {
@@ -79,8 +83,10 @@ export class HashDiff implements IDiff {
                         sameList.push(localFile);
                     }
                     else {
-                        sizeReplace += localFile.size ?? 0;
-                        replaceList.push(localFile);
+                        if (allowReplace) {
+                            sizeReplace += localFile.size ?? 0;
+                            replaceList.push(localFile);
+                        }
                     }
                 }
 
