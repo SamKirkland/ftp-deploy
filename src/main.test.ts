@@ -589,6 +589,7 @@ describe("getLocalFiles", () => {
             exclude: [],
             "log-level": "standard",
             security: "loose",
+            timeout: 30000,
         });
 
         const mainYamlDiff = localDirDiffs.data.find(diff => diff.name === "workflows/main.yml")! as IFile;

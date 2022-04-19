@@ -57,10 +57,17 @@ export interface IFtpDeployArguments {
      * When using protocol "ftps" or "ftps-legacy" should the cert name need to match exactly?
      * Set this to "strict" to ensure your data is being encrypted
      * 
-     * Defautls to loose because of the sheer volume of shared hosts that give ftp domains a cert without a matching common name
+     * Defaults to loose because of the sheer volume of shared hosts that give ftp domains a cert without a matching common name
      * @default "loose"
      */
     security?: "strict" | "loose";
+
+    /**
+     * Timeout in milliseconds for FTP operations as handled by underlying basic-ftp connection library.
+     * 
+     * Defaults to 30000 milliseconds (30s).
+     */
+    timeout?: 30000;
 }
 
 export interface IFtpDeployArgumentsWithDefaults {
@@ -77,6 +84,7 @@ export interface IFtpDeployArgumentsWithDefaults {
     exclude: string[];
     "log-level": "minimal" | "standard" | "verbose";
     security: "strict" | "loose";
+    timeout: number;
 }
 
 export interface IFile {
