@@ -1,16 +1,27 @@
-import { HashDiff } from "./HashDiff";
-import { IFileList, currentSyncFileVersion, IFile } from "./types";
-import { Record } from "./types";
-import { applyExcludeFilter, getDefaultSettings, ILogger, Timings } from "./utilities";
-import path from "path";
-import FtpSrv from "ftp-srv";
-import { getLocalFiles } from "./localFiles";
-import { FTPSyncProvider } from "./syncProvider";
-import { deploy } from "./deploy";
-import { Stats as readdirStats } from "@jsdevtools/readdir-enhanced";
-import { excludeDefaults } from "./module";
-
-const tenFiles: Record[] = [
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const HashDiff_1 = require("./HashDiff");
+const types_1 = require("./types");
+const utilities_1 = require("./utilities");
+const path_1 = __importDefault(require("path"));
+const ftp_srv_1 = __importDefault(require("ftp-srv"));
+const localFiles_1 = require("./localFiles");
+const syncProvider_1 = require("./syncProvider");
+const deploy_1 = require("./deploy");
+const module_1 = require("./module");
+const tenFiles = [
     {
         type: "file",
         name: "a",
@@ -72,70 +83,56 @@ const tenFiles: Record[] = [
         hash: "hash10",
     }
 ];
-
-class MockedLogger implements ILogger {
-    all() { };
-    standard() { };
-    verbose() { };
+class MockedLogger {
+    all() { }
+    ;
+    standard() { }
+    ;
+    verbose() { }
+    ;
 }
-
 describe("HashDiff", () => {
-    const thing = new HashDiff();
-    const emptyFileList: IFileList = { version: currentSyncFileVersion, description: "", generatedTime: new Date().getTime(), data: [] };
-    const minimalFileList: IFileList = { version: currentSyncFileVersion, description: "", generatedTime: new Date().getTime(), data: tenFiles };
-
+    const thing = new HashDiff_1.HashDiff();
+    const emptyFileList = { version: types_1.currentSyncFileVersion, description: "", generatedTime: new Date().getTime(), data: [] };
+    const minimalFileList = { version: types_1.currentSyncFileVersion, description: "", generatedTime: new Date().getTime(), data: tenFiles };
     test("Empty Client, Empty Server", () => {
         const diffs = thing.getDiffs(emptyFileList, emptyFileList);
-
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(0);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(0);
         expect(diffs.sizeDelete).toEqual(0);
         expect(diffs.sizeReplace).toEqual(0);
     });
-
     test("Minimal Client, Empty Server", () => {
         const diffs = thing.getDiffs(minimalFileList, emptyFileList);
-
         expect(diffs.upload.length).toEqual(10);
         expect(diffs.delete.length).toEqual(0);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(10000);
         expect(diffs.sizeDelete).toEqual(0);
         expect(diffs.sizeReplace).toEqual(0);
     });
-
     test("Empty Client, Minimal Server", () => {
         const diffs = thing.getDiffs(emptyFileList, minimalFileList);
-
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(10);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(0);
         expect(diffs.sizeDelete).toEqual(10000);
         expect(diffs.sizeReplace).toEqual(0);
     });
-
     test("Minimal Client, Minimal Server - No Diffs", () => {
         const diffs = thing.getDiffs(minimalFileList, minimalFileList);
-
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(0);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(0);
         expect(diffs.sizeDelete).toEqual(0);
         expect(diffs.sizeReplace).toEqual(0);
     });
-
     test("Minimal Client, Minimal Server", () => {
-        const minimalFileList2: IFileList = {
-            ...minimalFileList,
-            data: [
+        const minimalFileList2 = Object.assign(Object.assign({}, minimalFileList), { data: [
                 ...minimalFileList.data,
                 {
                     type: "file",
@@ -143,23 +140,17 @@ describe("HashDiff", () => {
                     size: 1000,
                     hash: "hash",
                 }
-            ]
-        };
+            ] });
         const diffs = thing.getDiffs(minimalFileList2, minimalFileList);
-
         expect(diffs.upload.length).toEqual(1);
         expect(diffs.delete.length).toEqual(0);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(1000);
         expect(diffs.sizeDelete).toEqual(0);
         expect(diffs.sizeReplace).toEqual(0);
     });
-
     test("Minimal Client, Minimal Server 2", () => {
-        const minimalFileList2: IFileList = {
-            ...minimalFileList,
-            data: [
+        const minimalFileList2 = Object.assign(Object.assign({}, minimalFileList), { data: [
                 ...minimalFileList.data,
                 {
                     type: "file",
@@ -167,34 +158,24 @@ describe("HashDiff", () => {
                     size: 1000,
                     hash: "hash",
                 }
-            ]
-        };
+            ] });
         const diffs = thing.getDiffs(minimalFileList, minimalFileList2);
-
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(1);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(0);
         expect(diffs.sizeDelete).toEqual(1000);
         expect(diffs.sizeReplace).toEqual(0);
     });
-
     test("Delete folder with nested content", () => {
-        const clientState: IFileList = {
-            ...emptyFileList,
-            data: [
+        const clientState = Object.assign(Object.assign({}, emptyFileList), { data: [
                 {
                     type: "folder",
                     name: "folder/",
                     size: undefined,
                 }
-            ]
-        };
-
-        const serverState: IFileList = {
-            ...emptyFileList,
-            data: [
+            ] });
+        const serverState = Object.assign(Object.assign({}, emptyFileList), { data: [
                 {
                     type: "folder",
                     name: "folder/",
@@ -211,30 +192,24 @@ describe("HashDiff", () => {
                     size: 1000,
                     hash: "fakeHashContent"
                 }
-            ]
-        };
-
+            ] });
         const diffs = thing.getDiffs(clientState, serverState);
-
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(1);
         expect(diffs.delete).toStrictEqual([{ type: "folder", name: "folder/subFolder/", size: undefined }]);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(0);
         expect(diffs.sizeDelete).toEqual(1000);
         expect(diffs.sizeReplace).toEqual(0);
     });
 });
-
 describe("FTP sync commands", () => {
     const mockedLogger = new MockedLogger();
-    const mockedTimings = new Timings();
-
-    test("upload file", async () => {
-        const hashDiff = new HashDiff();
-        const localFiles: IFileList = {
-            version: currentSyncFileVersion,
+    const mockedTimings = new utilities_1.Timings();
+    test("upload file", () => __awaiter(void 0, void 0, void 0, function* () {
+        const hashDiff = new HashDiff_1.HashDiff();
+        const localFiles = {
+            version: types_1.currentSyncFileVersion,
             description: "",
             generatedTime: new Date().getTime(),
             data: [
@@ -246,43 +221,37 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const serverFiles: IFileList = {
-            version: currentSyncFileVersion,
+        const serverFiles = {
+            version: types_1.currentSyncFileVersion,
             description: "",
             generatedTime: new Date().getTime(),
             data: []
         };
         const diffs = hashDiff.getDiffs(localFiles, serverFiles);
-
         expect(diffs.upload.length).toEqual(1);
         expect(diffs.delete.length).toEqual(0);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(1000);
         expect(diffs.sizeDelete).toEqual(0);
         expect(diffs.sizeReplace).toEqual(0);
-
         const mockClient = {
             ensureDir() { },
             uploadFrom() { },
         };
-        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
+        const syncProvider = new syncProvider_1.FTPSyncProvider(mockClient, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
         const spyRemoveFile = jest.spyOn(syncProvider, "uploadFile");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
-        await syncProvider.syncLocalToServer(diffs);
-
+        yield syncProvider.syncLocalToServer(diffs);
         expect(spyRemoveFile).toHaveBeenCalledTimes(1);
         expect(spyRemoveFile).toHaveBeenCalledWith("path/file.txt", "upload");
-
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(2);
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/path/file.txt", "path/file.txt");
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(2, "local-dir/state-name", "state-name");
-    });
-
-    test("rename file", async () => {
-        const hashDiff = new HashDiff();
-        const localFiles: IFileList = {
-            version: currentSyncFileVersion,
+    }));
+    test("rename file", () => __awaiter(void 0, void 0, void 0, function* () {
+        const hashDiff = new HashDiff_1.HashDiff();
+        const localFiles = {
+            version: types_1.currentSyncFileVersion,
             description: "",
             generatedTime: new Date().getTime(),
             data: [
@@ -294,8 +263,8 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const serverFiles: IFileList = {
-            version: currentSyncFileVersion,
+        const serverFiles = {
+            version: types_1.currentSyncFileVersion,
             description: "",
             generatedTime: new Date().getTime(),
             data: [
@@ -308,45 +277,37 @@ describe("FTP sync commands", () => {
             ]
         };
         const diffs = hashDiff.getDiffs(localFiles, serverFiles);
-
         expect(diffs.upload.length).toEqual(1);
         expect(diffs.delete.length).toEqual(1);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(1000);
         expect(diffs.sizeDelete).toEqual(1000);
         expect(diffs.sizeReplace).toEqual(0);
-
         const mockClient = {
             ensureDir() { },
             remove() { },
             uploadFrom() { },
         };
-        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
+        const syncProvider = new syncProvider_1.FTPSyncProvider(mockClient, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
         const spyUploadFile = jest.spyOn(syncProvider, "uploadFile");
         const spyRemoveFile = jest.spyOn(syncProvider, "removeFile");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
         const mockClientRemove = jest.spyOn(mockClient, "remove");
-        await syncProvider.syncLocalToServer(diffs);
-
+        yield syncProvider.syncLocalToServer(diffs);
         expect(spyRemoveFile).toHaveBeenCalledTimes(1);
         expect(spyRemoveFile).toHaveBeenCalledWith("path/oldFile.txt");
-
         expect(spyUploadFile).toHaveBeenCalledTimes(1);
         expect(spyUploadFile).toHaveBeenCalledWith("path/newName.txt", "upload");
-
         expect(mockClientRemove).toHaveBeenCalledTimes(1);
         expect(mockClientRemove).toHaveBeenNthCalledWith(1, "path/oldFile.txt");
-
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(2);
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/path/newName.txt", "path/newName.txt");
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(2, "local-dir/state-name", "state-name");
-    });
-
-    test("replace file", async () => {
-        const hashDiff = new HashDiff();
-        const localFiles: IFileList = {
-            version: currentSyncFileVersion,
+    }));
+    test("replace file", () => __awaiter(void 0, void 0, void 0, function* () {
+        const hashDiff = new HashDiff_1.HashDiff();
+        const localFiles = {
+            version: types_1.currentSyncFileVersion,
             description: "",
             generatedTime: new Date().getTime(),
             data: [
@@ -358,8 +319,8 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const serverFiles: IFileList = {
-            version: currentSyncFileVersion,
+        const serverFiles = {
+            version: types_1.currentSyncFileVersion,
             description: "",
             generatedTime: new Date().getTime(),
             data: [
@@ -372,43 +333,37 @@ describe("FTP sync commands", () => {
             ]
         };
         const diffs = hashDiff.getDiffs(localFiles, serverFiles);
-
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(0);
         expect(diffs.replace.length).toEqual(1);
-
         expect(diffs.sizeUpload).toEqual(0);
         expect(diffs.sizeDelete).toEqual(0);
         expect(diffs.sizeReplace).toEqual(3000);
-
         const mockClient = {
             ensureDir() { },
             remove() { },
             uploadFrom() { },
         };
-        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
+        const syncProvider = new syncProvider_1.FTPSyncProvider(mockClient, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
         const spyUploadFile = jest.spyOn(syncProvider, "uploadFile");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
-        await syncProvider.syncLocalToServer(diffs);
-
+        yield syncProvider.syncLocalToServer(diffs);
         expect(spyUploadFile).toHaveBeenCalledTimes(1);
         expect(spyUploadFile).toHaveBeenCalledWith("path/file.txt", "replace");
-
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(2);
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/path/file.txt", "path/file.txt");
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(2, "local-dir/state-name", "state-name");
-    });
-
-    test("remove file", async () => {
-        const hashDiff = new HashDiff();
-        const localFiles: IFileList = {
-            version: currentSyncFileVersion,
+    }));
+    test("remove file", () => __awaiter(void 0, void 0, void 0, function* () {
+        const hashDiff = new HashDiff_1.HashDiff();
+        const localFiles = {
+            version: types_1.currentSyncFileVersion,
             description: "",
             generatedTime: new Date().getTime(),
             data: []
         };
-        const serverFiles: IFileList = {
-            version: currentSyncFileVersion,
+        const serverFiles = {
+            version: types_1.currentSyncFileVersion,
             description: "",
             generatedTime: new Date().getTime(),
             data: [
@@ -421,46 +376,39 @@ describe("FTP sync commands", () => {
             ]
         };
         const diffs = hashDiff.getDiffs(localFiles, serverFiles);
-
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(1);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(0);
         expect(diffs.sizeDelete).toEqual(1000);
         expect(diffs.sizeReplace).toEqual(0);
-
         const mockClient = {
             ensureDir() { },
             remove() { },
             uploadFrom() { },
         };
-        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
+        const syncProvider = new syncProvider_1.FTPSyncProvider(mockClient, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
         const spyRemoveFile = jest.spyOn(syncProvider, "removeFile");
         const mockClientRemove = jest.spyOn(mockClient, "remove");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
-        await syncProvider.syncLocalToServer(diffs);
-
+        yield syncProvider.syncLocalToServer(diffs);
         expect(spyRemoveFile).toHaveBeenCalledTimes(1);
         expect(spyRemoveFile).toHaveBeenCalledWith("path/file.txt");
-
         expect(mockClientRemove).toHaveBeenCalledTimes(1);
         expect(mockClientRemove).toHaveBeenNthCalledWith(1, "path/file.txt");
-
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(1);
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/state-name", "state-name");
-    });
-
-    test("remove folder", async () => {
-        const hashDiff = new HashDiff();
-        const localFiles: IFileList = {
-            version: currentSyncFileVersion,
+    }));
+    test("remove folder", () => __awaiter(void 0, void 0, void 0, function* () {
+        const hashDiff = new HashDiff_1.HashDiff();
+        const localFiles = {
+            version: types_1.currentSyncFileVersion,
             description: "",
             generatedTime: new Date().getTime(),
             data: []
         };
-        const serverFiles: IFileList = {
-            version: currentSyncFileVersion,
+        const serverFiles = {
+            version: types_1.currentSyncFileVersion,
             description: "",
             generatedTime: new Date().getTime(),
             data: [
@@ -477,15 +425,12 @@ describe("FTP sync commands", () => {
             ]
         };
         const diffs = hashDiff.getDiffs(localFiles, serverFiles);
-
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(2);
         expect(diffs.replace.length).toEqual(0);
-
         expect(diffs.sizeUpload).toEqual(0);
         expect(diffs.sizeDelete).toEqual(0);
         expect(diffs.sizeReplace).toEqual(0);
-
         const mockClient = {
             ensureDir() { },
             remove() { },
@@ -493,89 +438,72 @@ describe("FTP sync commands", () => {
             uploadFrom() { },
             cdup() { },
         };
-        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
+        const syncProvider = new syncProvider_1.FTPSyncProvider(mockClient, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false, false);
         const spyRemoveFolder = jest.spyOn(syncProvider, "removeFolder");
         const mockClientRemove = jest.spyOn(mockClient, "remove");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
         const mockClientRemoveDir = jest.spyOn(mockClient, "removeDir");
-        await syncProvider.syncLocalToServer(diffs);
-
+        yield syncProvider.syncLocalToServer(diffs);
         expect(spyRemoveFolder).toHaveBeenCalledTimes(2);
         expect(spyRemoveFolder).toHaveBeenCalledWith("path/folder/");
         expect(spyRemoveFolder).toHaveBeenCalledWith("baseFolder/");
-
         // these paths should be absolute
         expect(mockClientRemoveDir).toHaveBeenCalledTimes(2);
         expect(mockClientRemoveDir).toHaveBeenNthCalledWith(2, "/server-dir/path/folder/");
         expect(mockClientRemoveDir).toHaveBeenNthCalledWith(1, "/server-dir/baseFolder/");
-
         expect(mockClientRemove).toHaveBeenCalledTimes(0);
-
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(1);
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/state-name", "state-name");
-    });
+    }));
 });
-
-class MockedStats implements readdirStats {
-    constructor(path: string) {
+class MockedStats {
+    constructor(path) {
+        this.dev = 0;
+        this.ino = 0;
+        this.mode = 0;
+        this.nlink = 0;
+        this.uid = 0;
+        this.gid = 0;
+        this.rdev = 0;
+        this.size = 0;
+        this.blksize = 0;
+        this.blocks = 0;
+        this.atimeMs = 0;
+        this.mtimeMs = 0;
+        this.ctimeMs = 0;
+        this.birthtimeMs = 0;
+        this.atime = new Date();
+        this.mtime = new Date();
+        this.ctime = new Date();
+        this.birthtime = new Date();
         this.path = path;
         this.depth = path.split("/").length;
     }
-
-    isFile(): boolean {
+    isFile() {
         return !this.path.endsWith("/");
     }
-
-    isDirectory(): boolean {
+    isDirectory() {
         return this.path.endsWith("/");
     }
-
-    isBlockDevice(): boolean {
+    isBlockDevice() {
         throw new Error("Method not implemented.");
     }
-
-    isCharacterDevice(): boolean {
+    isCharacterDevice() {
         throw new Error("Method not implemented.");
     }
-
-    isSymbolicLink(): boolean {
+    isSymbolicLink() {
         throw new Error("Method not implemented.");
     }
-
-    isFIFO(): boolean {
+    isFIFO() {
         throw new Error("Method not implemented.");
     }
-
-    isSocket(): boolean {
+    isSocket() {
         throw new Error("Method not implemented.");
     }
-
-    dev = 0;
-    ino = 0;
-    mode = 0;
-    nlink = 0;
-    uid = 0;
-    gid = 0;
-    rdev = 0;
-    size = 0;
-    blksize = 0;
-    blocks = 0;
-    atimeMs = 0;
-    mtimeMs = 0;
-    ctimeMs = 0;
-    birthtimeMs = 0;
-    atime: Date = new Date();
-    mtime: Date = new Date();
-    ctime: Date = new Date();
-    birthtime: Date = new Date();
-
-    path: string;
-    depth: number;
 }
-
 describe("getLocalFiles", () => {
-    test("local-dir", async () => {
-        const localDirDiffs = await getLocalFiles({
+    test("local-dir", () => __awaiter(void 0, void 0, void 0, function* () {
+        const localDirDiffs = yield localFiles_1.getLocalFiles({
             server: "127.0.0.1",
             username: "testUsername",
             password: "testPassword",
@@ -591,8 +519,7 @@ describe("getLocalFiles", () => {
             security: "loose",
             "sync-posix-modes": true,
         });
-
-        const mainYamlDiff = localDirDiffs.data.find(diff => diff.name === "workflows/main.yml")! as IFile;
+        const mainYamlDiff = localDirDiffs.data.find(diff => diff.name === "workflows/main.yml");
         expect(localDirDiffs.data).toEqual([
             {
                 type: "folder",
@@ -605,24 +532,20 @@ describe("getLocalFiles", () => {
                 size: mainYamlDiff.size,
                 hash: mainYamlDiff.hash
             }
-        ] as Record[]);
-    });
-
-    test("exclude node_modules", async () => {
-        const files: MockedStats[] = [
+        ]);
+    }));
+    test("exclude node_modules", () => __awaiter(void 0, void 0, void 0, function* () {
+        const files = [
             new MockedStats("test/sam"),
             new MockedStats("node_modules/"),
             new MockedStats("node_modules/test.js"),
             new MockedStats("node_modules/@samkirkland/"),
         ];
-
-        const filteredStats = files.filter(file => applyExcludeFilter(file, excludeDefaults));
-
+        const filteredStats = files.filter(file => utilities_1.applyExcludeFilter(file, module_1.excludeDefaults));
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/sam"]);
-    });
-
-    test("exclude .git files", async () => {
-        const files: MockedStats[] = [
+    }));
+    test("exclude .git files", () => __awaiter(void 0, void 0, void 0, function* () {
+        const files = [
             new MockedStats("test/sam"),
             new MockedStats(".git/"),
             new MockedStats(".gitattributes"),
@@ -632,14 +555,11 @@ describe("getLocalFiles", () => {
             new MockedStats(".github/workflows/main.yml"),
             new MockedStats("test/.git/workflows/main.yml"),
         ];
-
-        const filteredStats = files.filter(file => applyExcludeFilter(file, excludeDefaults));
-
+        const filteredStats = files.filter(file => utilities_1.applyExcludeFilter(file, module_1.excludeDefaults));
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/sam"]);
-    });
-
-    test("exclude none", async () => {
-        const files: MockedStats[] = [
+    }));
+    test("exclude none", () => __awaiter(void 0, void 0, void 0, function* () {
+        const files = [
             new MockedStats("test/sam"),
             new MockedStats("test/folder/"),
             new MockedStats(".gitattributes"),
@@ -652,64 +572,48 @@ describe("getLocalFiles", () => {
             new MockedStats("node_modules/test.js"),
             new MockedStats("node_modules/@samkirkland/"),
         ];
-
-        const filteredStats = files.filter(file => applyExcludeFilter(file, []));
-
+        const filteredStats = files.filter(file => utilities_1.applyExcludeFilter(file, []));
         expect(filteredStats.length).toBe(11);
-    });
-
-    test("exclude all js files", async () => {
-        const files: MockedStats[] = [
+    }));
+    test("exclude all js files", () => __awaiter(void 0, void 0, void 0, function* () {
+        const files = [
             new MockedStats("test/test.js"),
             new MockedStats("test/folder/"),
         ];
-
-        const filteredStats = files.filter(file => applyExcludeFilter(file, ["*.js"]));
-
+        const filteredStats = files.filter(file => utilities_1.applyExcludeFilter(file, ["*.js"]));
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/folder/"]);
-    });
-
-    test("exclude globbed folder", async () => {
-        const files: MockedStats[] = [
+    }));
+    test("exclude globbed folder", () => __awaiter(void 0, void 0, void 0, function* () {
+        const files = [
             new MockedStats("test/test.js"),
             new MockedStats("test/folder/"),
         ];
-
-        const filteredStats = files.filter(file => applyExcludeFilter(file, ["**/folder/**"]));
-
+        const filteredStats = files.filter(file => utilities_1.applyExcludeFilter(file, ["**/folder/**"]));
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
-    });
-
-    test("exclude existing folder", async () => {
-        const files: MockedStats[] = [
+    }));
+    test("exclude existing folder", () => __awaiter(void 0, void 0, void 0, function* () {
+        const files = [
             new MockedStats("test/test.js"),
             new MockedStats("test/folder/"),
         ];
-
-        const filteredStats = files.filter(file => applyExcludeFilter(file, ["**/folder/**"]));
-
+        const filteredStats = files.filter(file => utilities_1.applyExcludeFilter(file, ["**/folder/**"]));
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
-    });
-
-    test("exclude existing folder while adding new file", async () => {
-        const files: MockedStats[] = [
+    }));
+    test("exclude existing folder while adding new file", () => __awaiter(void 0, void 0, void 0, function* () {
+        const files = [
             new MockedStats("test/test.js"),
             new MockedStats("test/folder/"),
             new MockedStats("test/folder/newfile.js"),
         ];
-
-        const filteredStats = files.filter(file => applyExcludeFilter(file, ["test/folder/**"]));
-
+        const filteredStats = files.filter(file => utilities_1.applyExcludeFilter(file, ["test/folder/**"]));
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
-    });
+    }));
 });
-
 describe("error handling", () => {
-    test("throws on error", async () => {
+    test("throws on error", () => __awaiter(void 0, void 0, void 0, function* () {
         const mockedLogger = new MockedLogger();
-        const mockedTimings = new Timings();
-
-        const argsWithDefaults = getDefaultSettings({
+        const mockedTimings = new utilities_1.Timings();
+        const argsWithDefaults = utilities_1.getDefaultSettings({
             server: "127.0.0.1",
             username: "testUsername",
             password: "testPassword",
@@ -719,16 +623,13 @@ describe("error handling", () => {
             "dry-run": true,
             "log-level": "minimal"
         });
-
-        await expect(async () => await deploy(argsWithDefaults, mockedLogger, mockedTimings)).rejects.toThrow();
-    }, 30000);
+        yield expect(() => __awaiter(void 0, void 0, void 0, function* () { return yield deploy_1.deploy(argsWithDefaults, mockedLogger, mockedTimings); })).rejects.toThrow();
+    }), 30000);
 });
-
 describe("Deploy", () => {
     const port = 2121;
-    const homeDir = path.join(__dirname, "../");
-
-    const ftpServer = new FtpSrv({
+    const homeDir = path_1.default.join(__dirname, "../");
+    const ftpServer = new ftp_srv_1.default({
         anonymous: true,
         pasv_url: "127.0.0.1",
         url: `ftp://127.0.0.1:${port}`,
@@ -736,17 +637,14 @@ describe("Deploy", () => {
         blacklist: [],
         whitelist: []
     });
-
     ftpServer.on("login", (data, resolve) => {
         resolve({ root: homeDir });
     });
-
-    test("Full Deploy", async () => {
+    test("Full Deploy", () => __awaiter(void 0, void 0, void 0, function* () {
         const mockedLogger = new MockedLogger();
-        const mockedTimings = new Timings();
+        const mockedTimings = new utilities_1.Timings();
         ftpServer.listen();
-
-        const argsWithDefaults = getDefaultSettings({
+        const argsWithDefaults = utilities_1.getDefaultSettings({
             server: "127.0.0.1",
             username: "testUsername",
             password: "testPassword",
@@ -756,9 +654,7 @@ describe("Deploy", () => {
             "dry-run": true,
             "log-level": "minimal"
         });
-
-        await deploy(argsWithDefaults, mockedLogger, mockedTimings);
-
+        yield deploy_1.deploy(argsWithDefaults, mockedLogger, mockedTimings);
         ftpServer.close();
-    }, 30000);
+    }), 30000);
 });

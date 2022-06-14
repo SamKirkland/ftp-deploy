@@ -112,7 +112,7 @@ export async function deploy(args: IFtpDeployArgumentsWithDefaults, logger: ILog
 
     // header
     logger.all(`----------------------------------------------------------------`);
-    logger.all(`🚀 Thanks for using ftp-deploy. Let's deploy some stuff!   `);
+    logger.all(`🚀 Thanks for using ftp-deploy. Let's deploy some stuff (with posix file mode support)!   `);
     logger.all(`----------------------------------------------------------------`);
     logger.all(`If you found this project helpful, please support it`);
     logger.all(`by giving it a ⭐ on Github --> https://github.com/SamKirkland/FTP-Deploy-Action`);
@@ -184,7 +184,7 @@ export async function deploy(args: IFtpDeployArgumentsWithDefaults, logger: ILog
 
         timings.start("upload");
         try {
-            const syncProvider = new FTPSyncProvider(client, logger, timings, args["local-dir"], args["server-dir"], args["state-name"], args["dry-run"]);
+            const syncProvider = new FTPSyncProvider(client, logger, timings, args["local-dir"], args["server-dir"], args["state-name"], args["dry-run"], args["sync-posix-modes"]);
             await syncProvider.syncLocalToServer(diffs);
         }
         finally {
