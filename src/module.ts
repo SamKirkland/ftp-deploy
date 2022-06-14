@@ -18,14 +18,5 @@ export async function deploy(args: IFtpDeployArguments): Promise<void> {
   const argsWithDefaults = getDefaultSettings(args);
   const logger = new Logger(argsWithDefaults["log-level"]);
   const timings = new Timings();
-  logger.verbose("Deploying with settings:");
-  for(var key in argsWithDefaults) {
-    logger.verbose(key);
-    if (key != "password" && key != "username" && key != "server") {
-      logger.verbose(argsWithDefaults[key]);
-    } else {
-      logger.verbose("<redacted>");
-    }
-  }
   await deployCustom(argsWithDefaults, logger, timings);
 }
