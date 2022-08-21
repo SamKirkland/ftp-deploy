@@ -1,5 +1,5 @@
 import { HashDiff } from "./HashDiff";
-import { IFileList, currentSyncFileVersion, IFile } from "./types";
+import { IFileList, currentSyncFileVersion, IFile, IFtpDeployArgumentsWithDefaults } from "./types";
 import { Record } from "./types";
 import { applyExcludeFilter, getDefaultSettings, ILogger, Timings } from "./utilities";
 import path from "path";
@@ -589,6 +589,7 @@ describe("getLocalFiles", () => {
             exclude: [],
             "log-level": "standard",
             security: "loose",
+            timeout: 30000,
         });
 
         const mainYamlDiff = localDirDiffs.data.find(diff => diff.name === "workflows/main.yml")! as IFile;
@@ -700,6 +701,69 @@ describe("getLocalFiles", () => {
         const filteredStats = files.filter(file => applyExcludeFilter(file, ["test/folder/**"]));
 
         expect(filteredStats.map(f => f.path)).toStrictEqual(["test/test.js"]);
+    });
+});
+
+
+describe("getDefaultSettings", () => {
+    test("path validation", async () => {
+        expect(() => getDefaultSettings({
+            server: "a",
+            username: "b",
+            password: "c",
+            "local-dir": "noEndingSlash"
+        })).toThrowError("local-dir should be a folder (must end with /)");
+
+        expect(() => getDefaultSettings({
+            server: "a",
+            username: "b",
+            password: "c",
+            "server-dir": "noEndingSlash"
+        })).toThrowError("server-dir should be a folder (must end with /)");
+    });
+
+    test("verify default settings", async () => {
+        expect(getDefaultSettings({
+            server: "a",
+            username: "b",
+            password: "c",
+        })).toEqual({
+            server: "a",
+            username: "b",
+            password: "c",
+            port: 21,
+            protocol: "ftp",
+            "local-dir": "./",
+            "server-dir": "./",
+            "state-name": ".ftp-deploy-sync-state.json",
+            "dry-run": false,
+            "dangerous-clean-slate": false,
+            exclude: excludeDefaults,
+            "log-level": "standard",
+            security: "loose",
+            timeout: 30000
+        });
+    });
+
+    test("verify default settings override", async () => {
+        const customSettings: IFtpDeployArgumentsWithDefaults = {
+            server: "a",
+            username: "b",
+            password: "c",
+            port: 54321,
+            protocol: "ftps-legacy",
+            "local-dir": "./client/",
+            "server-dir": "./server/",
+            "state-name": ".customState.json",
+            "dry-run": true,
+            "dangerous-clean-slate": true,
+            exclude: [],
+            "log-level": "verbose",
+            security: "strict",
+            timeout: 1234
+        };
+
+        expect(getDefaultSettings(customSettings)).toEqual(customSettings);
     });
 });
 
