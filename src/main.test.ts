@@ -1,12 +1,12 @@
 import { HashDiff } from "./HashDiff";
-import { IFileList, currentSyncFileVersion, IFile, IFtpDeployArgumentsWithDefaults } from "./types";
+import { IFileList, currentSyncFileVersion, IFile, IFtpDeployArgumentsWithDefaults, DiffResult } from "./types";
 import { Record } from "./types";
 import { applyExcludeFilter, getDefaultSettings, ILogger, Timings } from "./utilities";
 import path from "path";
 import FtpSrv from "ftp-srv";
 import { getLocalFiles } from "./localFiles";
 import { FTPSyncProvider } from "./syncProvider";
-import { deploy } from "./deploy";
+import { deploy, getServerFiles } from "./deploy";
 import { Stats as readdirStats } from "@jsdevtools/readdir-enhanced";
 import { excludeDefaults } from "./module";
 
@@ -785,6 +785,91 @@ describe("error handling", () => {
 
         await expect(async () => await deploy(argsWithDefaults, mockedLogger, mockedTimings)).rejects.toThrow();
     }, 30000);
+});
+
+describe("dry-run", () => {
+    test("getServerFiles doesn't mutate server", async () => {
+        const mockedLogger = new MockedLogger();
+        const mockedTimings = new Timings();
+        const mockClient = {
+            clearWorkingDir() { },
+            ensureDir() { },
+        };
+        const settings = getDefaultSettings({
+            server: "a",
+            username: "b",
+            password: "c",
+            "dry-run": true,
+            "dangerous-clean-slate": true,
+        });
+
+        const spyClearWorkingDir = jest.spyOn(mockClient, "clearWorkingDir");
+        await getServerFiles(mockClient as any, mockedLogger, mockedTimings, settings);
+
+        expect(spyClearWorkingDir).toHaveBeenCalledTimes(0);
+    });
+
+    test("doesn't mutate server", async () => {
+        const mockedLogger = new MockedLogger();
+        const mockedTimings = new Timings();
+        const mockClient = {
+            uploadFile() { },
+            removeFile() { },
+            uploadFrom() { },
+            remove() { },
+        };
+        const mockedDiffs: DiffResult = {
+            upload: [
+                {
+                    type: "file",
+                    name: "path/upload.txt",
+                    size: 1000,
+                    hash: "hash2",
+                }
+            ],
+            delete: [
+                {
+                    type: "file",
+                    name: "path/delete.txt",
+                    size: 1000,
+                    hash: "hash2",
+                }
+            ],
+            replace: [
+                {
+                    type: "file",
+                    name: "path/replace.txt",
+                    size: 1000,
+                    hash: "hash2",
+                }
+            ],
+            same: [
+                {
+                    type: "file",
+                    name: "path/same.txt",
+                    size: 1000,
+                    hash: "hash2",
+                }
+            ],
+            sizeUpload: 1000,
+            sizeDelete: 1000,
+            sizeReplace: 1000,
+        };
+
+        // todo ensureDir
+
+        const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", true);
+        const spyUploadFile = jest.spyOn(mockClient, "uploadFile");
+        const spyRemoveFile = jest.spyOn(mockClient, "removeFile");
+        const spyUploadFrom = jest.spyOn(mockClient, "uploadFrom");
+        const spyRemove = jest.spyOn(mockClient, "remove");
+        await syncProvider.syncLocalToServer(mockedDiffs);
+
+        expect(spyUploadFile).toHaveBeenCalledTimes(0);
+        expect(spyRemoveFile).toHaveBeenCalledTimes(0);
+        expect(spyUploadFrom).toHaveBeenCalledTimes(0);
+        expect(spyRemove).toHaveBeenCalledTimes(0);
+    });
 });
 
 describe("Deploy", () => {
