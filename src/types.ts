@@ -64,10 +64,9 @@ export interface IFtpDeployArguments {
 
     /**
      * Timeout in milliseconds for FTP operations as handled by underlying basic-ftp connection library.
-     * 
-     * Defaults to 30000 milliseconds (30s).
+     * @default 30000 (30 seconds)
      */
-    timeout?: 30000;
+    timeout?: number;
 }
 
 export interface IFtpDeployArgumentsWithDefaults {

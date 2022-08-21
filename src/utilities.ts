@@ -188,7 +188,7 @@ export function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDe
         "exclude": withoutDefaults.exclude ?? excludeDefaults,
         "log-level": withoutDefaults["log-level"] ?? "standard",
         "security": withoutDefaults.security ?? "loose",
-        "timeout": withoutDefaults.timeout ?? 30000
+        "timeout": withoutDefaults.timeout ?? 30000,
     };
 }
 
