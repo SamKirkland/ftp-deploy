@@ -1,12 +1,7 @@
-import fs from "fs";
-import util from "util";
-
 import prettyBytes from "pretty-bytes";
 import type * as ftp from "basic-ftp";
-import { DiffResult, ErrorCode, IFilePath, Record } from "./types";
+import { DiffResult, ErrorCode, IFile, IFilePath, IFolder, isFile, isFolder, Record } from "./types";
 import { ILogger, pluralize, retryRequest, ITimings } from "./utilities";
-
-const stat = util.promisify(fs.stat);
 
 export async function ensureDir(client: ftp.Client, logger: ILogger, timings: ITimings, folder: string): Promise<void> {
     timings.start("changingDir");
@@ -19,16 +14,16 @@ export async function ensureDir(client: ftp.Client, logger: ILogger, timings: IT
 }
 
 interface ISyncProvider {
-    createFolder(folderPath: string): Promise<void>;
-    removeFile(filePath: string): Promise<void>;
-    removeFolder(folderPath: string): Promise<void>;
+    createFolder(folder: IFolder): Promise<void>;
+    removeFile(file: IFile): Promise<void>;
+    removeFolder(folder: IFolder): Promise<void>;
 
     /**
      * @param file file can include folder(s)
      * Note working dir is modified and NOT reset after upload
      * For now we are going to reset it - but this will be removed for performance
      */
-    uploadFile(filePath: string, type: "upload" | "replace"): Promise<void>;
+    uploadFile(file: IFile, type: "upload" | "replace"): Promise<void>;
 
     syncLocalToServer(diffs: DiffResult): Promise<void>;
 }
@@ -86,14 +81,14 @@ export class FTPSyncProvider implements ISyncProvider {
         }
     }
 
-    async createFolder(folderPath: string) {
-        this.logger.all(`creating folder "${folderPath + "/"}"`);
+    async createFolder(folder: Record) {
+        this.logger.all(`creating folder "${folder.name + "/"}"`);
 
         if (this.dryRun === true) {
             return;
         }
 
-        const path = this.getFileBreadcrumbs(folderPath + "/");
+        const path = this.getFileBreadcrumbs(folder.name + "/");
 
         if (path.folders === null) {
             this.logger.verbose(`  no need to change dir`);
@@ -102,18 +97,20 @@ export class FTPSyncProvider implements ISyncProvider {
             await ensureDir(this.client, this.logger, this.timings, path.folders.join("/"));
         }
 
+        await this.syncMode(folder);
+
         // navigate back to the root folder
         await this.upDir(path.folders?.length);
 
         this.logger.verbose(`  completed`);
     }
 
-    async removeFile(filePath: string) {
-        this.logger.all(`removing "${filePath}"`);
+    async removeFile(file: IFile) {
+        this.logger.all(`removing "${file.name}"`);
 
         if (this.dryRun === false) {
             try {
-                await retryRequest(this.logger, async () => await this.client.remove(filePath));
+                await retryRequest(this.logger, async () => await this.client.remove(file.name));
             }
             catch (e: any) {
                 // this error is common when a file was deleted on the server directly
@@ -130,8 +127,8 @@ export class FTPSyncProvider implements ISyncProvider {
         this.logger.verbose(`  completed`);
     }
 
-    async removeFolder(folderPath: string) {
-        const absoluteFolderPath = "/" + (this.serverPath.startsWith("./") ? this.serverPath.replace("./", "") : this.serverPath) + folderPath;
+    async removeFolder(folder: IFolder) {
+        const absoluteFolderPath = "/" + (this.serverPath.startsWith("./") ? this.serverPath.replace("./", "") : this.serverPath) + folder.name;
         this.logger.all(`removing folder "${absoluteFolderPath}"`);
 
         if (this.dryRun === false) {
@@ -141,14 +138,16 @@ export class FTPSyncProvider implements ISyncProvider {
         this.logger.verbose(`  completed`);
     }
 
-    async uploadFile(filePath: string, type: "upload" | "replace" = "upload") {
+    async uploadFile(file: IFile, type: "upload" | "replace" = "upload") {
         const typePresent = type === "upload" ? "uploading" : "replacing";
         const typePast = type === "upload" ? "uploaded" : "replaced";
-        this.logger.all(`${typePresent} "${filePath}"`);
+        this.logger.all(`${typePresent} "${file.name}"`);
 
         if (this.dryRun === false) {
-            await retryRequest(this.logger, async () => await this.client.uploadFrom(this.localPath + filePath, filePath));
+            await retryRequest(this.logger, async () => await this.client.uploadFrom(this.localPath + file.name, file.name));
         }
+
+        await this.syncMode(file);
 
         this.logger.verbose(`  file ${typePast}`);
     }
@@ -157,16 +156,19 @@ export class FTPSyncProvider implements ISyncProvider {
         if (!this.syncPosixModes) {
             return;
         }
-        this.logger.verbose("Syncing posix mode for file " + file.name);
-        // https://www.martin-brennan.com/nodejs-file-permissions-fstat/
-        let stats = await stat(this.localPath + file.name);
-        let mode: string = "0" + (stats.mode & parseInt('777', 8)).toString(8);
-        // https://github.com/patrickjuchli/basic-ftp/issues/9
-        let command = "SITE CHMOD " + mode + " " + file.name
-        if (this.dryRun === false) {
-            await this.client.ftp.request(command);
+        if (file.mode === undefined) {
+            return;
         }
-        this.logger.verbose("Setting file mode with command " + command);
+
+        this.logger.verbose(`Syncing posix mode for file ${file.name}`);
+
+        const setModeCommand = `SITE CHMOD ${file.mode} ${file.name}`;
+
+        if (this.dryRun === false) {
+            await this.client.ftp.request(setModeCommand);
+        }
+
+        this.logger.verbose(`Setting file mode with command ${setModeCommand}`);
     }
 
     async syncLocalToServer(diffs: DiffResult) {
@@ -178,32 +180,34 @@ export class FTPSyncProvider implements ISyncProvider {
         this.logger.all(`----------------------------------------------------------------`);
 
         // create new folders
-        for (const file of diffs.upload.filter(item => item.type === "folder")) {
-            await this.createFolder(file.name);
-            await this.syncMode(file);
+        const newFolder = diffs.upload.filter((item): item is IFolder => isFolder(item));
+        for (const file of newFolder) {
+            await this.createFolder(file);
         }
 
         // upload new files
-        for (const file of diffs.upload.filter(item => item.type === "file").filter(item => item.name !== this.stateName)) {
-            await this.uploadFile(file.name, "upload");
-            await this.syncMode(file);
+        const newFiles = diffs.upload.filter((item): item is IFile => isFile(item)).filter(item => item.name !== this.stateName);
+        for (const file of newFiles) {
+            await this.uploadFile(file, "upload");
         }
 
         // replace new files
-        for (const file of diffs.replace.filter(item => item.type === "file").filter(item => item.name !== this.stateName)) {
+        const replaceFiles = diffs.replace.filter((item): item is IFile => isFile(item)).filter(item => item.name !== this.stateName);
+        for (const file of replaceFiles) {
             // note: FTP will replace old files with new files. We run replacements after uploads to limit downtime
-            await this.uploadFile(file.name, "replace");
-            await this.syncMode(file);
+            await this.uploadFile(file, "replace");
         }
 
         // delete old files
-        for (const file of diffs.delete.filter(item => item.type === "file")) {
-            await this.removeFile(file.name);
+        const deleteFiles = diffs.delete.filter((item): item is IFile => isFile(item));
+        for (const file of deleteFiles) {
+            await this.removeFile(file);
         }
 
         // delete old folders
-        for (const file of diffs.delete.filter(item => item.type === "folder")) {
-            await this.removeFolder(file.name);
+        const deleteFolders = diffs.delete.filter((item): item is IFolder => isFolder(item));
+        for (const file of deleteFolders) {
+            await this.removeFolder(file);
         }
 
         this.logger.all(`----------------------------------------------------------------`);

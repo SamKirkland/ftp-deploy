@@ -87,17 +87,41 @@ export interface IFtpDeployArgumentsWithDefaults {
     security: "strict" | "loose";
 }
 
+export function isFile(file: Record): file is IFile {
+    return file.type === "file";
+}
+
+export function isFolder(folder: Record): folder is IFolder {
+    return folder.type === "folder";
+}
+
 export interface IFile {
     type: "file";
     name: string;
     size: number;
     hash: string;
+
+    /**
+     * file permission
+     * https://www.martin-brennan.com/nodejs-file-permissions-fstat/
+     * 
+     * unset before version 1.2.5
+     */
+    mode?: string;
 }
 
 export interface IFolder {
     type: "folder";
     name: string;
     size: undefined;
+
+    /**
+     * file permission
+     * https://www.martin-brennan.com/nodejs-file-permissions-fstat/
+     * 
+     * unset before version 1.2.5
+     */
+    mode?: string;
 }
 
 export type Record = IFolder | IFile;
