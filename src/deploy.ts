@@ -66,17 +66,19 @@ async function connect(client: ftp.Client, args: IFtpDeployArgumentsWithDefaults
     }
 }
 
-async function getServerFiles(client: ftp.Client, logger: ILogger, timings: ITimings, args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
+export async function getServerFiles(client: ftp.Client, logger: ILogger, timings: ITimings, args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
     try {
         await ensureDir(client, logger, timings, args["server-dir"]);
 
         if (args["dangerous-clean-slate"]) {
             logger.all(`----------------------------------------------------------------`);
             logger.all("🗑️ Removing all files on the server because 'dangerous-clean-slate' was set, this will make the deployment very slow...");
-            await client.clearWorkingDir();
+            if (args["dry-run"] === false) {
+                await client.clearWorkingDir();
+            }
             logger.all("Clear complete");
 
-            throw new Error("nope");
+            throw new Error("dangerous-clean-slate was run");
         }
 
         const serverFiles = await downloadFileList(client, logger, args["state-name"]);
