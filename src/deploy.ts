@@ -125,7 +125,7 @@ export async function deploy(args: IFtpDeployArgumentsWithDefaults, logger: ILog
 
     createLocalState(localFiles, logger, args);
 
-    const client = new ftp.Client();
+    const client = new ftp.Client(args.timeout);
 
     global.reconnect = async function () {
         timings.start("connecting");
