@@ -183,7 +183,7 @@ export class FTPSyncProvider implements ISyncProvider {
         this.logger.all(`----------------------------------------------------------------`);
         this.logger.all(`🎉 Sync complete. Saving current server state to "${this.serverPath + this.stateName}"`);
         if (this.dryRun === false) {
-            await retryRequest(this.logger, async () => await this.client.uploadFrom(this.localPath + this.stateName, this.stateName));
+            await retryRequest(this.logger, async () => await this.client.uploadFrom("./local_state.json", this.stateName));
         }
     }
 }
