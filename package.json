@@ -26,30 +26,30 @@
   "author": "Sam Kirkland",
   "license": "MIT",
   "dependencies": {
-    "basic-ftp": "^5.0.2",
+    "basic-ftp": "^5.0.3",
     "lodash": "^4.17.21",
     "multimatch": "^5.0.0",
     "pretty-bytes": "^5.6.0",
     "pretty-ms": "^7.0.1",
     "readdir-enhanced": "^6.0.4",
-    "yargs": "^17.7.1"
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@types/jest": "^28.1.7",
-    "@types/lodash": "^4.14.191",
-    "@types/minimatch": "^3.0.4",
-    "@types/node": "^18.7.9",
-    "@types/yargs": "^17.0.22",
-    "@typescript-eslint/eslint-plugin": "^5.33.1",
-    "@typescript-eslint/parser": "^5.33.1",
-    "eslint": "^8.22.0",
-    "eslint-plugin-jest": "^26.8.6",
+    "@types/jest": "^29.5.5",
+    "@types/lodash": "^4.14.199",
+    "@types/minimatch": "^5.1.2",
+    "@types/node": "^20.6.5",
+    "@types/yargs": "^17.0.25",
+    "@typescript-eslint/eslint-plugin": "^6.7.2",
+    "@typescript-eslint/parser": "^6.7.2",
+    "eslint": "^8.50.0",
+    "eslint-plugin-jest": "^27.4.0",
     "ftp-srv": "^4.6.2",
-    "jest": "^28.1.3",
+    "jest": "^29.7.0",
     "js-yaml": "^4.1.0",
-    "ts-jest": "^28.0.8",
+    "ts-jest": "^29.1.1",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^4.7.4"
+    "typescript": "^5.2.2"
   },
   "bugs": {
     "url": "https://github.com/SamKirkland/ftp-deploy/issues"
