@@ -180,6 +180,41 @@ describe("HashDiff", () => {
         expect(diffs.sizeReplace).toEqual(0);
     });
 
+    test("File name changed", () => {
+        const minimalFileList1: IFileList = {
+            ...minimalFileList,
+            data: [
+                {
+                    type: "file",
+                    name: "S5_1.jpg",
+                    size: 1000,
+                    hash: "hash",
+                }
+            ]
+        };
+
+        const minimalFileList2: IFileList = {
+            ...minimalFileList,
+            data: [
+                {
+                    type: "file",
+                    name: "s5_1.jpg",
+                    size: 1000,
+                    hash: "hash",
+                }
+            ]
+        };
+        const diffs = thing.getDiffs(minimalFileList1, minimalFileList2);
+
+        expect(diffs.upload.length).toEqual(1);
+        expect(diffs.delete.length).toEqual(1);
+        expect(diffs.replace.length).toEqual(0);
+
+        expect(diffs.sizeUpload).toEqual(1000);
+        expect(diffs.sizeDelete).toEqual(1000);
+        expect(diffs.sizeReplace).toEqual(0);
+    });
+
     test("Delete folder with nested content", () => {
         const clientState: IFileList = {
             ...emptyFileList,
