@@ -36,7 +36,7 @@ export interface IFtpDeployArguments {
     "dry-run"?: boolean;
 
     /**
-     * Tries to sync posix file modes to server. Only works for new or updated files.
+     * Tries to sync posix file modes to server. Only works for unix based operating systems.
      * Note: Not all FTP servers support settings POSIX file modes.
      * @default false
      */
@@ -187,6 +187,7 @@ export enum ErrorCode {
     InsufficientStorageSpaceOrFileInUse = 452,
 
     // Syntax error, command unrecognized and the requested action did not take place. This may include errors such as command line too long.
+    CommandUnrecognized = 500,
     SyntaxErrorInParameters = 501,
     CommandNotImpemented = 502,
     BadSequenceOfCommands = 503,
