@@ -1,4 +1,5 @@
 import fs from "fs";
+import path from "path";
 import util from "util";
 
 import prettyBytes from "pretty-bytes";
@@ -153,20 +154,30 @@ export class FTPSyncProvider implements ISyncProvider {
         this.logger.verbose(`  file ${typePast}`);
     }
 
-    async syncMode(file: Record) {
+    async syncMode(fileName: string) {
         if (!this.syncPosixModes) {
             return;
         }
-        this.logger.verbose("Syncing posix mode for file " + file.name);
+        this.logger.verbose(`Syncing posix mode for file "${fileName}"`);
         // https://www.martin-brennan.com/nodejs-file-permissions-fstat/
-        let stats = await stat(this.localPath + file.name);
-        let mode: string = "0" + (stats.mode & parseInt('777', 8)).toString(8);
+        const filePath = path.join(this.localPath, fileName);
+        const stats = await stat(filePath);
+        const mode: string = "0" + (stats.mode & parseInt('777', 8)).toString(8);
         // https://github.com/patrickjuchli/basic-ftp/issues/9
-        let command = "SITE CHMOD " + mode + " " + file.name
-        if (this.dryRun === false) {
-            await this.client.ftp.request(command);
+        const command = `SITE CHMOD ${mode} ${fileName}`;
+
+        if (!this.dryRun) {
+            try {
+                await this.client.ftp.request(command);
+            }catch(e: any) {
+                // 
+                if (e.code === ErrorCode.CommandUnrecognized) {
+                    this.logger.standard("Unable to sync posix mode. The server doesn't support setting permissions. SITE CHMOD command unrecognized.");
+                }
+                throw e;
+            }
         }
-        this.logger.verbose("Setting file mode with command " + command);
+        this.logger.verbose(`Setting file mode with command "${command}"`);
     }
 
     async syncLocalToServer(diffs: DiffResult) {
@@ -180,20 +191,20 @@ export class FTPSyncProvider implements ISyncProvider {
         // create new folders
         for (const file of diffs.upload.filter(item => item.type === "folder")) {
             await this.createFolder(file.name);
-            await this.syncMode(file);
+            await this.syncMode(file.name);
         }
 
         // upload new files
         for (const file of diffs.upload.filter(item => item.type === "file").filter(item => item.name !== this.stateName)) {
             await this.uploadFile(file.name, "upload");
-            await this.syncMode(file);
+            await this.syncMode(file.name);
         }
 
         // replace new files
         for (const file of diffs.replace.filter(item => item.type === "file").filter(item => item.name !== this.stateName)) {
             // note: FTP will replace old files with new files. We run replacements after uploads to limit downtime
             await this.uploadFile(file.name, "replace");
-            await this.syncMode(file);
+            await this.syncMode(file.name);
         }
 
         // delete old files
