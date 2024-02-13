@@ -48,7 +48,7 @@ export interface IFtpDeployArguments {
     exclude?: string[];
 
     /**
-     * Turing this off will only log those files that will actually be added/updated/changed.
+     * Turning this off will only log those files that will actually be added/updated/changed.
      * @default true
      */
     "log-unchanged-files"?: boolean;
