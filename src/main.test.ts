@@ -588,6 +588,7 @@ describe("getLocalFiles", () => {
             "dangerous-clean-slate": false,
             exclude: [],
             "log-level": "standard",
+            'log-unchanged-files': true,
             security: "loose",
             timeout: 30000,
         });
@@ -740,6 +741,7 @@ describe("getDefaultSettings", () => {
             "dangerous-clean-slate": false,
             exclude: excludeDefaults,
             "log-level": "standard",
+            "log-unchanged-files": true,
             security: "loose",
             timeout: 30000
         });
@@ -759,6 +761,7 @@ describe("getDefaultSettings", () => {
             "dangerous-clean-slate": true,
             exclude: [],
             "log-level": "verbose",
+            'log-unchanged-files': true,
             security: "strict",
             timeout: 1234
         };

@@ -187,6 +187,7 @@ export function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDe
         "dangerous-clean-slate": withoutDefaults["dangerous-clean-slate"] ?? false,
         "exclude": withoutDefaults.exclude ?? excludeDefaults,
         "log-level": withoutDefaults["log-level"] ?? "standard",
+        "log-unchanged-files": withoutDefaults["log-unchanged-files"] ?? true,
         "security": withoutDefaults.security ?? "loose",
         "timeout": withoutDefaults.timeout ?? 30000,
     };
