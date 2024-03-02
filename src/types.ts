@@ -48,6 +48,24 @@ export interface IFtpDeployArguments {
     exclude?: string[];
 
     /**
+     * Set to false to skip uploading new files and folders
+     * @default true
+     */
+    allowUpload?: boolean;
+
+    /**
+     * Set to false to skip replacing existing files and folders
+     * @default true
+     */
+    allowReplace?: boolean;
+
+    /**
+     * Set to false to skip deleting obsoleted files and folders
+     * @default true
+     */
+    allowDelete?: boolean;
+
+    /**
      * How much information should print. minimal=only important info, standard=important info and basic file changes, verbose=print everything the script is doing
      * @default "info"
      */
@@ -81,6 +99,9 @@ export interface IFtpDeployArgumentsWithDefaults {
     "dry-run": boolean;
     "dangerous-clean-slate": boolean;
     exclude: string[];
+    allowUpload: boolean;
+    allowReplace: boolean;
+    allowDelete: boolean;
     "log-level": "minimal" | "standard" | "verbose";
     security: "strict" | "loose";
     timeout: number;
@@ -130,7 +151,7 @@ export type DiffResult = {
 }
 
 export interface IDiff {
-    getDiffs(localFiles: IFileList, serverFiles: IFileList): DiffResult;
+    getDiffs(localFiles: IFileList, serverFiles: IFileList, allowUpload: boolean, allowReplace: boolean, allowDelete: boolean): DiffResult;
 }
 
 export interface IFilePath {
