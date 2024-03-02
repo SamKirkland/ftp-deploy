@@ -1,6 +1,6 @@
 {
   "name": "@samkirkland/ftp-deploy",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "private": false,
   "description": "Deploy files to a ftp server",
   "main": "dist/module.js",
@@ -26,7 +26,7 @@
   "author": "Sam Kirkland",
   "license": "MIT",
   "dependencies": {
-    "basic-ftp": "^5.0.2",
+    "basic-ftp": "^5.0.5",
     "lodash": "^4.17.21",
     "multimatch": "^5.0.0",
     "pretty-bytes": "^5.6.0",
@@ -38,7 +38,7 @@
     "@types/jest": "^28.1.7",
     "@types/lodash": "^4.14.191",
     "@types/minimatch": "^3.0.4",
-    "@types/node": "^18.7.9",
+    "@types/node": "^20.11.24",
     "@types/yargs": "^17.0.22",
     "@typescript-eslint/eslint-plugin": "^5.33.1",
     "@typescript-eslint/parser": "^5.33.1",
