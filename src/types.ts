@@ -48,6 +48,12 @@ export interface IFtpDeployArguments {
     exclude?: string[];
 
     /**
+     * Turning this off will only log those files that will actually be added/updated/changed.
+     * @default true
+     */
+    "log-unchanged-files"?: boolean;
+
+    /**
      * How much information should print. minimal=only important info, standard=important info and basic file changes, verbose=print everything the script is doing
      * @default "info"
      */
@@ -82,6 +88,7 @@ export interface IFtpDeployArgumentsWithDefaults {
     "dangerous-clean-slate": boolean;
     exclude: string[];
     "log-level": "minimal" | "standard" | "verbose";
+    "log-unchanged-files": boolean;
     security: "strict" | "loose";
     timeout: number;
 }
