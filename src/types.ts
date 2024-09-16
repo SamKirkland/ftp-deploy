@@ -42,6 +42,12 @@ export interface IFtpDeployArguments {
     "dangerous-clean-slate"?: boolean;
 
     /**
+     * An array of glob patterns, these files will ONLY be included in the publish/delete process
+     * @default [ "**\/*" ]
+     */
+    include?: string[];
+
+    /**
      * An array of glob patterns, these files will not be included in the publish/delete process
      * @default [ ".git*", ".git*\/**", "node_modules\/**", "node_modules\/**\/*" ]
      */
@@ -80,6 +86,7 @@ export interface IFtpDeployArgumentsWithDefaults {
     "state-name": string;
     "dry-run": boolean;
     "dangerous-clean-slate": boolean;
+    include: string[];
     exclude: string[];
     "log-level": "minimal" | "standard" | "verbose";
     security: "strict" | "loose";

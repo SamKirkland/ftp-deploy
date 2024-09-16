@@ -1,5 +1,5 @@
 import prettyMilliseconds from "pretty-ms";
-import { excludeDefaults } from "./module";
+import { includeDefaults, excludeDefaults } from "./module";
 import { ErrorCode, IFtpDeployArguments, IFtpDeployArgumentsWithDefaults } from "./types";
 import multimatch from "multimatch";
 
@@ -185,6 +185,7 @@ export function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDe
         "state-name": withoutDefaults["state-name"] ?? ".ftp-deploy-sync-state.json",
         "dry-run": withoutDefaults["dry-run"] ?? false,
         "dangerous-clean-slate": withoutDefaults["dangerous-clean-slate"] ?? false,
+        "include": withoutDefaults.include ?? includeDefaults,
         "exclude": withoutDefaults.exclude ?? excludeDefaults,
         "log-level": withoutDefaults["log-level"] ?? "standard",
         "security": withoutDefaults.security ?? "loose",
