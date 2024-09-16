@@ -2,9 +2,12 @@ import { Record, IFileList, syncFileDescription, currentSyncFileVersion, IFtpDep
 import { fileHash } from "./HashDiff";
 import { globSync} from 'glob'
 import { lstatSync } from "fs";
+import { ILogger } from "./utilities";
 
-export async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
+export async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults, logger: ILogger): Promise<IFileList> {
     const files = globSync(args['include'], {ignore: args['exclude'], cwd: args['local-dir'], });
+    logger.verbose(`Local files:`, JSON.stringify({files},null,2));
+
     const records: Record[] = [];
 
     for (const path of files) {

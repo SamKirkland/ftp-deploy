@@ -119,10 +119,11 @@ export async function deploy(args: IFtpDeployArgumentsWithDefaults, logger: ILog
     logger.all(`If you found this project helpful, please support it`);
     logger.all(`by giving it a ⭐ on Github --> https://github.com/SamKirkland/FTP-Deploy-Action`);
     logger.all(`or add a badge 🏷️ to your projects readme --> https://github.com/SamKirkland/FTP-Deploy-Action#badge`);
+    logger.verbose(`Using the following include filters: ${JSON.stringify(args.include)}`);
     logger.verbose(`Using the following excludes filters: ${JSON.stringify(args.exclude)}`);
 
     timings.start("hash");
-    const localFiles = await getLocalFiles(args);
+    const localFiles = await getLocalFiles(args, logger);
     timings.stop("hash");
 
     createLocalState(localFiles, logger, args);
@@ -151,6 +152,8 @@ export async function deploy(args: IFtpDeployArgumentsWithDefaults, logger: ILog
         logger.standard(`----------------------------------------------------------------`);
         logger.standard(`Calculating differences between client & server`);
         logger.standard(`----------------------------------------------------------------`);
+        logger.verbose(`Local files:`, JSON.stringify(localFiles,null,2));
+        logger.verbose(`Server files:`, JSON.stringify(serverFiles,null,2));
 
         const diffs = diffTool.getDiffs(localFiles, serverFiles);
 
