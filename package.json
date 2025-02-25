@@ -4,6 +4,9 @@
   "private": false,
   "description": "Deploy files to a ftp server",
   "main": "src/module.ts",
+  "type": "module",
+  "types": "src/module.ts",
+  "module": "src/module.ts",
   "bin": {
     "ftp-deploy": "dist/cli.js"
   },
