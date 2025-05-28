@@ -50,7 +50,7 @@ export class FTPSyncProvider implements ISyncProvider {
 
     /**
      * Converts a file path (ex: "folder/otherfolder/file.txt") to an array of folder and a file path
-     * @param fullPath 
+     * @param fullPath
      */
     private getFileBreadcrumbs(fullPath: string): IFilePath {
         // todo see if this regex will work for nonstandard folder names
@@ -128,7 +128,17 @@ export class FTPSyncProvider implements ISyncProvider {
         this.logger.all(`removing folder "${absoluteFolderPath}"`);
 
         if (this.dryRun === false) {
-            await retryRequest(this.logger, async () => await this.client.removeDir(absoluteFolderPath));
+            try {
+                await retryRequest(this.logger, async () => await this.client.removeDir(absoluteFolderPath));
+            }
+            catch (e: any) {
+                if (e.code === ErrorCode.FileNotFoundOrNoAccess) {
+                    this.logger.standard("Directory not found or you don't have access to the file - skipping...");
+                }
+                else {
+                    throw e;
+                }
+            }
         }
 
         this.logger.verbose(`  completed`);
