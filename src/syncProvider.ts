@@ -110,7 +110,7 @@ export class FTPSyncProvider implements ISyncProvider {
             }
             catch (e: any) {
                 // this error is common when a file was deleted on the server directly
-                if (e.code === ErrorCode.FileNotFoundOrNoAccess) {
+                if (e?.code === ErrorCode.FileNotFoundOrNoAccess) {
                     this.logger.standard("File not found or you don't have access to the file - skipping...");
                 }
                 else {
@@ -132,7 +132,7 @@ export class FTPSyncProvider implements ISyncProvider {
                 await retryRequest(this.logger, async () => await this.client.removeDir(absoluteFolderPath));
             }
             catch (e: any) {
-                if (e.code === ErrorCode.FileNotFoundOrNoAccess) {
+                if (e?.code === ErrorCode.FileNotFoundOrNoAccess) {
                     this.logger.standard("Directory not found or you don't have access to the file - skipping...");
                 }
                 else {
