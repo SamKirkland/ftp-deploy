@@ -3,6 +3,11 @@ import { IFtpDeployArguments } from "./types";
 import { getDefaultSettings, Logger, Timings } from "./utilities";
 
 /**
+ * Default includes, everything by default
+ */
+export const includeDefaults = ["**/*"];
+
+/**
  * Default excludes, ignores all git files and the node_modules folder
  * **\/.git* ignores all FILES that start with .git(in any folder or sub-folder)
  * **\/.git*\/** ignores all FOLDERS that start with .git (in any folder or sub-folder)

@@ -1,17 +1,21 @@
-import readdir from "@jsdevtools/readdir-enhanced";
 import { Record, IFileList, syncFileDescription, currentSyncFileVersion, IFtpDeployArgumentsWithDefaults } from "./types";
 import { fileHash } from "./HashDiff";
-import { applyExcludeFilter } from "./utilities";
+import { globSync} from 'glob'
+import { lstatSync } from "fs";
+import { ILogger } from "./utilities";
 
-export async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
-    const files = await readdir.async(args["local-dir"], { deep: true, stats: true, sep: "/", filter: (stat) => applyExcludeFilter(stat, args.exclude) });
+export async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults, logger: ILogger): Promise<IFileList> {
+    const files = globSync(args['include'], {ignore: args['exclude'], cwd: args['local-dir'], });
+    logger.verbose(`Local files:`, JSON.stringify({files},null,2));
+
     const records: Record[] = [];
 
-    for (let stat of files) {
+    for (const path of files) {
+        const stat = lstatSync(path);
         if (stat.isDirectory()) {
             records.push({
                 type: "folder",
-                name: stat.path,
+                name: path,
                 size: undefined
             });
 
@@ -21,9 +25,9 @@ export async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Prom
         if (stat.isFile()) {
             records.push({
                 type: "file",
-                name: stat.path,
+                name: path,
                 size: stat.size,
-                hash: await fileHash(args["local-dir"] + stat.path, "sha256")
+                hash: await fileHash(args["local-dir"] + path, "sha256")
             });
 
             continue;
