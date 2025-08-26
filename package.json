@@ -1,6 +1,6 @@
 {
   "name": "@samkirkland/ftp-deploy",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "private": false,
   "description": "Deploy files to a ftp server",
   "main": "dist/module.js",
