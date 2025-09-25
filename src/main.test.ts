@@ -225,6 +225,93 @@ describe("HashDiff", () => {
         expect(diffs.sizeDelete).toEqual(1000);
         expect(diffs.sizeReplace).toEqual(0);
     });
+
+    test("Disallow upload", () => {
+        const minimalFileList2: IFileList = {
+            ...minimalFileList,
+            data: [
+                ...minimalFileList.data,
+                {
+                    type: "file",
+                    name: "zzzz",
+                    size: 1000,
+                    hash: "hash",
+                }
+            ]
+        };
+        const diffs = thing.getDiffs(minimalFileList2, minimalFileList, false);
+
+        expect(diffs.upload.length).toEqual(0);
+        expect(diffs.delete.length).toEqual(0);
+        expect(diffs.replace.length).toEqual(0);
+
+        expect(diffs.sizeUpload).toEqual(0);
+        expect(diffs.sizeDelete).toEqual(0);
+        expect(diffs.sizeReplace).toEqual(0);
+    });
+
+    test("Disallow replace", () => {
+        const localFiles: IFileList = {
+            version: currentSyncFileVersion,
+            description: "",
+            generatedTime: new Date().getTime(),
+            data: [
+                {
+                    type: "file",
+                    name: "path/file.txt",
+                    size: 3000,
+                    hash: "hash1",
+                }
+            ]
+        };
+        const serverFiles: IFileList = {
+            version: currentSyncFileVersion,
+            description: "",
+            generatedTime: new Date().getTime(),
+            data: [
+                {
+                    type: "file",
+                    name: "path/file.txt",
+                    size: 1000,
+                    hash: "hash2",
+                }
+            ]
+        };
+        
+        const diffs = thing.getDiffs(localFiles, serverFiles, true, false);
+
+        expect(diffs.upload.length).toEqual(0);
+        expect(diffs.delete.length).toEqual(0);
+        expect(diffs.replace.length).toEqual(0);
+
+        expect(diffs.sizeUpload).toEqual(0);
+        expect(diffs.sizeDelete).toEqual(0);
+        expect(diffs.sizeReplace).toEqual(0);
+    });
+
+    test("Disallow delete", () => {
+        const minimalFileList2: IFileList = {
+            ...minimalFileList,
+            data: [
+                ...minimalFileList.data,
+                {
+                    type: "file",
+                    name: "zzzz",
+                    size: 1000,
+                    hash: "hash",
+                }
+            ]
+        };
+        const diffs = thing.getDiffs(minimalFileList, minimalFileList2, true, true, false);
+
+        expect(diffs.upload.length).toEqual(0);
+        expect(diffs.delete.length).toEqual(0);
+        expect(diffs.replace.length).toEqual(0);
+
+        expect(diffs.sizeUpload).toEqual(0);
+        expect(diffs.sizeDelete).toEqual(0);
+        expect(diffs.sizeReplace).toEqual(0);
+    });
 });
 
 describe("FTP sync commands", () => {
@@ -587,6 +674,9 @@ describe("getLocalFiles", () => {
             "dry-run": true,
             "dangerous-clean-slate": false,
             exclude: [],
+            allowUpload: true,
+            allowReplace: true,
+            allowDelete: true,
             "log-level": "standard",
             security: "loose",
             timeout: 30000,

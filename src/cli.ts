@@ -15,6 +15,9 @@ const argv = yargs.options({
     "dry-run": { type: "boolean", default: false, description: "Prints which modifications will be made with current config options, but doesn't actually make any changes" },
     "dangerous-clean-slate": { type: "boolean", default: false, description: "Deletes ALL contents of server-dir, even items in excluded with 'exclude' argument" },
     "exclude": { type: "array", default: excludeDefaults, description: "An array of glob patterns, these files will not be included in the publish/delete process" },
+    "allowUpload": { type: "boolean", default: true, description: "Set to false to skip uploading new files and folders" },
+    "allowReplace": { type: "boolean", default: true, description: "Set to false to skip replacing existing files and folders" },
+    "allowDelete": { type: "boolean", default: true, description: "Set to false to skip deleting obsoleted files and folders" },
     "log-level": { choices: ["minimal", "standard", "verbose"], default: "standard", description: "How much information should print. minimal=only important info, standard=important info and basic file changes, verbose=print everything the script is doing" },
     "security": { choices: ["strict", "loose"], default: "loose", description: "" }
 })
