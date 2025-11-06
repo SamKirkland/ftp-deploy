@@ -1,3 +1,5 @@
+import { ILogger } from "./utilities";
+
 export const currentSyncFileVersion = "1.0.0";
 export const syncFileDescription = "DO NOT DELETE THIS FILE. This file is used to keep track of which files have been synced in the most recent deployment. If you delete this file a resync will need to be done (which can take a while) - read more: https://github.com/SamKirkland/FTP-Deploy-Action";
 
@@ -67,6 +69,24 @@ export interface IFtpDeployArguments {
      * @default 30000 (30 seconds)
      */
     timeout?: number;
+
+    /**
+     * Enable upload of new files to the server
+     * @default true
+     */
+    "enable-upload"?: boolean;
+
+    /**
+     * Enable replacement of existing files with newer versions
+     * @default true
+     */
+    "enable-replace"?: boolean;
+
+    /**
+     * Enable deletion of files on the server when they are not present in the local directory
+     * @default true
+     */
+    "enable-delete"?: boolean;
 }
 
 export interface IFtpDeployArgumentsWithDefaults {
@@ -84,6 +104,9 @@ export interface IFtpDeployArgumentsWithDefaults {
     "log-level": "minimal" | "standard" | "verbose";
     security: "strict" | "loose";
     timeout: number;
+    "enable-upload": boolean;
+    "enable-replace": boolean;
+    "enable-delete": boolean;
 }
 
 export interface IFile {
@@ -130,7 +153,7 @@ export type DiffResult = {
 }
 
 export interface IDiff {
-    getDiffs(localFiles: IFileList, serverFiles: IFileList): DiffResult;
+    getDiffs(logger: ILogger, localFiles: IFileList, serverFiles: IFileList, enableUpload: boolean, enableReplace: boolean, enableDelete: boolean): DiffResult;
 }
 
 export interface IFilePath {

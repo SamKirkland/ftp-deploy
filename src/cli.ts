@@ -16,7 +16,10 @@ const argv = yargs.options({
     "dangerous-clean-slate": { type: "boolean", default: false, description: "Deletes ALL contents of server-dir, even items in excluded with 'exclude' argument" },
     "exclude": { type: "array", default: excludeDefaults, description: "An array of glob patterns, these files will not be included in the publish/delete process" },
     "log-level": { choices: ["minimal", "standard", "verbose"], default: "standard", description: "How much information should print. minimal=only important info, standard=important info and basic file changes, verbose=print everything the script is doing" },
-    "security": { choices: ["strict", "loose"], default: "loose", description: "" }
+    "security": { choices: ["strict", "loose"], default: "loose", description: "" },
+    "enable-upload": { type: "boolean", default: true, description: "Enable upload of new files to the server" },
+    "enable-replace": { type: "boolean", default: true, description: "Enable replacement of existing files with newer versions" },
+    "enable-delete": { type: "boolean", default: true, description: "Enable deletion of files on the server when they are not present in the local directory" }
 })
     .example("$0 --server ftp://samkirkland.com --username user --password pass", "")
     .help("help")

@@ -152,7 +152,7 @@ export async function deploy(args: IFtpDeployArgumentsWithDefaults, logger: ILog
         logger.standard(`Calculating differences between client & server`);
         logger.standard(`----------------------------------------------------------------`);
 
-        const diffs = diffTool.getDiffs(localFiles, serverFiles);
+        const diffs = diffTool.getDiffs(logger, localFiles, serverFiles, args["enable-upload"], args["enable-replace"], args["enable-delete"]);
 
         diffs.upload.filter((itemUpload) => itemUpload.type === "folder").map((itemUpload) => {
             logger.standard(`📁 Create: ${itemUpload.name}`);

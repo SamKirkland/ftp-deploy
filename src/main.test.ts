@@ -79,13 +79,119 @@ class MockedLogger implements ILogger {
     verbose() { };
 }
 
+// Test utility functions for FtpSrv testing
+function createTestFileList(files: Array<{name: string, size: number, hash: string, type?: "file" | "folder"}>): IFileList {
+    return {
+        version: currentSyncFileVersion,
+        description: "",
+        generatedTime: new Date().getTime(),
+        data: files.map(file => ({
+            type: file.type || "file",
+            name: file.name,
+            size: file.type === "folder" ? undefined : file.size,
+            hash: file.type === "folder" ? undefined : file.hash
+        })) as Record[]
+    };
+}
+
+function createMockFtpClient() {
+    return {
+        ensureDir: jest.fn(),
+        uploadFrom: jest.fn(),
+        remove: jest.fn(),
+        removeDir: jest.fn(),
+        cdup: jest.fn()
+    };
+}
+
+function setupSyncProviderSpies(syncProvider: FTPSyncProvider) {
+    return {
+        uploadFile: jest.spyOn(syncProvider, "uploadFile"),
+        removeFile: jest.spyOn(syncProvider, "removeFile"),
+        removeFolder: jest.spyOn(syncProvider, "removeFolder"),
+        createFolder: jest.spyOn(syncProvider, "createFolder")
+    };
+}
+
+async function testEnableOption(
+    localFiles: IFileList,
+    serverFiles: IFileList,
+    enableUpload: boolean,
+    enableReplace: boolean,
+    enableDelete: boolean,
+    expectedCalls: {
+        uploadFile?: Array<{file: string, type: "upload" | "replace"}>,
+        removeFile?: string[],
+        removeFolder?: string[],
+        createFolder?: string[]
+    }
+) {
+    const mockedLogger = new MockedLogger();
+    const mockedTimings = new Timings();
+    
+    // Generate diffs with the specified enable options
+    const hashDiff = new HashDiff();
+    const diffs = hashDiff.getDiffs(mockedLogger, localFiles, serverFiles, enableUpload, enableReplace, enableDelete);
+    
+    // Create mock client and sync provider
+    const mockClient = createMockFtpClient();
+    const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false);
+    const spies = setupSyncProviderSpies(syncProvider);
+    
+    // Execute the sync
+    await syncProvider.syncLocalToServer(diffs);
+    
+    // Verify expected calls
+    if (expectedCalls.uploadFile) {
+        expect(spies.uploadFile).toHaveBeenCalledTimes(expectedCalls.uploadFile.length);
+        expectedCalls.uploadFile.forEach((call, index) => {
+            expect(spies.uploadFile).toHaveBeenNthCalledWith(index + 1, call.file, call.type);
+        });
+    } else {
+        expect(spies.uploadFile).toHaveBeenCalledTimes(0);
+    }
+    
+    if (expectedCalls.removeFile) {
+        expect(spies.removeFile).toHaveBeenCalledTimes(expectedCalls.removeFile.length);
+        expectedCalls.removeFile.forEach((file, index) => {
+            expect(spies.removeFile).toHaveBeenNthCalledWith(index + 1, file);
+        });
+    } else {
+        expect(spies.removeFile).toHaveBeenCalledTimes(0);
+    }
+    
+    if (expectedCalls.removeFolder) {
+        expect(spies.removeFolder).toHaveBeenCalledTimes(expectedCalls.removeFolder.length);
+        expectedCalls.removeFolder.forEach((folder, index) => {
+            expect(spies.removeFolder).toHaveBeenNthCalledWith(index + 1, folder);
+        });
+    } else {
+        expect(spies.removeFolder).toHaveBeenCalledTimes(0);
+    }
+    
+    if (expectedCalls.createFolder) {
+        expect(spies.createFolder).toHaveBeenCalledTimes(expectedCalls.createFolder.length);
+        expectedCalls.createFolder.forEach((folder, index) => {
+            expect(spies.createFolder).toHaveBeenNthCalledWith(index + 1, folder);
+        });
+    } else {
+        expect(spies.createFolder).toHaveBeenCalledTimes(0);
+    }
+    
+    // Verify state file upload (should always happen)
+    expect(mockClient.uploadFrom).toHaveBeenCalledWith("local-dir/state-name", "state-name");
+    
+    return { diffs, spies, mockClient };
+}
+
 describe("HashDiff", () => {
     const thing = new HashDiff();
+    const logger = new MockedLogger();
     const emptyFileList: IFileList = { version: currentSyncFileVersion, description: "", generatedTime: new Date().getTime(), data: [] };
     const minimalFileList: IFileList = { version: currentSyncFileVersion, description: "", generatedTime: new Date().getTime(), data: tenFiles };
 
     test("Empty Client, Empty Server", () => {
-        const diffs = thing.getDiffs(emptyFileList, emptyFileList);
+        const diffs = thing.getDiffs(logger, emptyFileList, emptyFileList, true, true, true);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(0);
@@ -97,7 +203,7 @@ describe("HashDiff", () => {
     });
 
     test("Minimal Client, Empty Server", () => {
-        const diffs = thing.getDiffs(minimalFileList, emptyFileList);
+        const diffs = thing.getDiffs(logger, minimalFileList, emptyFileList, true, true, true);
 
         expect(diffs.upload.length).toEqual(10);
         expect(diffs.delete.length).toEqual(0);
@@ -109,7 +215,7 @@ describe("HashDiff", () => {
     });
 
     test("Empty Client, Minimal Server", () => {
-        const diffs = thing.getDiffs(emptyFileList, minimalFileList);
+        const diffs = thing.getDiffs(logger, emptyFileList, minimalFileList, true, true, true);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(10);
@@ -121,7 +227,7 @@ describe("HashDiff", () => {
     });
 
     test("Minimal Client, Minimal Server - No Diffs", () => {
-        const diffs = thing.getDiffs(minimalFileList, minimalFileList);
+        const diffs = thing.getDiffs(logger, minimalFileList, minimalFileList, true, true, true);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(0);
@@ -145,7 +251,7 @@ describe("HashDiff", () => {
                 }
             ]
         };
-        const diffs = thing.getDiffs(minimalFileList2, minimalFileList);
+        const diffs = thing.getDiffs(logger, minimalFileList2, minimalFileList, true, true, true);
 
         expect(diffs.upload.length).toEqual(1);
         expect(diffs.delete.length).toEqual(0);
@@ -169,7 +275,7 @@ describe("HashDiff", () => {
                 }
             ]
         };
-        const diffs = thing.getDiffs(minimalFileList, minimalFileList2);
+        const diffs = thing.getDiffs(logger, minimalFileList, minimalFileList2, true, true, true);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(1);
@@ -214,7 +320,7 @@ describe("HashDiff", () => {
             ]
         };
 
-        const diffs = thing.getDiffs(clientState, serverState);
+        const diffs = thing.getDiffs(logger, clientState, serverState, true, true, true);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(1);
@@ -224,6 +330,538 @@ describe("HashDiff", () => {
         expect(diffs.sizeUpload).toEqual(0);
         expect(diffs.sizeDelete).toEqual(1000);
         expect(diffs.sizeReplace).toEqual(0);
+    });
+
+    describe("enableUpload option", () => {
+        test("enableUpload=false prevents uploads", () => {
+            const diffs = thing.getDiffs(logger, minimalFileList, emptyFileList, false, true, true);
+
+            expect(diffs.upload.length).toEqual(0);
+            expect(diffs.delete.length).toEqual(0);
+            expect(diffs.replace.length).toEqual(0);
+
+            expect(diffs.sizeUpload).toEqual(0);
+            expect(diffs.sizeDelete).toEqual(0);
+            expect(diffs.sizeReplace).toEqual(0);
+        });
+
+        test("enableUpload=true allows uploads", () => {
+            const diffs = thing.getDiffs(logger, minimalFileList, emptyFileList, true, true, true);
+
+            expect(diffs.upload.length).toEqual(10);
+            expect(diffs.delete.length).toEqual(0);
+            expect(diffs.replace.length).toEqual(0);
+
+            expect(diffs.sizeUpload).toEqual(10000);
+            expect(diffs.sizeDelete).toEqual(0);
+            expect(diffs.sizeReplace).toEqual(0);
+        });
+
+        test("enableUpload=false with mixed scenario", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "newFile.txt",
+                        size: 500,
+                        hash: "newHash",
+                    },
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "changedHash",
+                    }
+                ]
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "originalHash",
+                    },
+                    {
+                        type: "file",
+                        name: "toDelete.txt",
+                        size: 200,
+                        hash: "deleteHash",
+                    }
+                ]
+            };
+
+            const diffs = thing.getDiffs(logger, localFiles, serverFiles, false, true, true);
+
+            expect(diffs.upload.length).toEqual(0); // Upload blocked
+            expect(diffs.delete.length).toEqual(1); // Delete allowed
+            expect(diffs.replace.length).toEqual(1); // Replace allowed
+
+            expect(diffs.sizeUpload).toEqual(0);
+            expect(diffs.sizeDelete).toEqual(200);
+            expect(diffs.sizeReplace).toEqual(1000);
+        });
+    });
+
+    describe("enableDelete option", () => {
+        test("enableDelete=false prevents deletions", () => {
+            const diffs = thing.getDiffs(logger, emptyFileList, minimalFileList, true, true, false);
+
+            expect(diffs.upload.length).toEqual(0);
+            expect(diffs.delete.length).toEqual(0);
+            expect(diffs.replace.length).toEqual(0);
+
+            expect(diffs.sizeUpload).toEqual(0);
+            expect(diffs.sizeDelete).toEqual(0);
+            expect(diffs.sizeReplace).toEqual(0);
+        });
+
+        test("enableDelete=true allows deletions", () => {
+            const diffs = thing.getDiffs(logger, emptyFileList, minimalFileList, true, true, true);
+
+            expect(diffs.upload.length).toEqual(0);
+            expect(diffs.delete.length).toEqual(10);
+            expect(diffs.replace.length).toEqual(0);
+
+            expect(diffs.sizeUpload).toEqual(0);
+            expect(diffs.sizeDelete).toEqual(10000);
+            expect(diffs.sizeReplace).toEqual(0);
+        });
+
+        test("enableDelete=false with mixed scenario", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "newFile.txt",
+                        size: 500,
+                        hash: "newHash",
+                    },
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "changedHash",
+                    }
+                ]
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "originalHash",
+                    },
+                    {
+                        type: "file",
+                        name: "toDelete.txt",
+                        size: 200,
+                        hash: "deleteHash",
+                    }
+                ]
+            };
+
+            const diffs = thing.getDiffs(logger, localFiles, serverFiles, true, true, false);
+
+            expect(diffs.upload.length).toEqual(1); // Upload allowed
+            expect(diffs.delete.length).toEqual(0); // Delete blocked
+            expect(diffs.replace.length).toEqual(1); // Replace allowed
+
+            expect(diffs.sizeUpload).toEqual(500);
+            expect(diffs.sizeDelete).toEqual(0);
+            expect(diffs.sizeReplace).toEqual(1000);
+        });
+    });
+
+    describe("enableReplace option", () => {
+        test("enableReplace=false prevents replacements", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "file.txt",
+                        size: 1000,
+                        hash: "newHash",
+                    }
+                ]
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "file.txt",
+                        size: 1000,
+                        hash: "oldHash",
+                    }
+                ]
+            };
+
+            const diffs = thing.getDiffs(logger, localFiles, serverFiles, true, false, true);
+
+            expect(diffs.upload.length).toEqual(0);
+            expect(diffs.delete.length).toEqual(0);
+            expect(diffs.replace.length).toEqual(0);
+
+            expect(diffs.sizeUpload).toEqual(0);
+            expect(diffs.sizeDelete).toEqual(0);
+            expect(diffs.sizeReplace).toEqual(0);
+        });
+
+        test("enableReplace=true allows replacements", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "file.txt",
+                        size: 1000,
+                        hash: "newHash",
+                    }
+                ]
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "file.txt",
+                        size: 1000,
+                        hash: "oldHash",
+                    }
+                ]
+            };
+
+            const diffs = thing.getDiffs(logger, localFiles, serverFiles, true, true, true);
+
+            expect(diffs.upload.length).toEqual(0);
+            expect(diffs.delete.length).toEqual(0);
+            expect(diffs.replace.length).toEqual(1);
+
+            expect(diffs.sizeUpload).toEqual(0);
+            expect(diffs.sizeDelete).toEqual(0);
+            expect(diffs.sizeReplace).toEqual(1000);
+        });
+
+        test("enableReplace=false with mixed scenario", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "newFile.txt",
+                        size: 500,
+                        hash: "newHash",
+                    },
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "changedHash",
+                    }
+                ]
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "originalHash",
+                    },
+                    {
+                        type: "file",
+                        name: "toDelete.txt",
+                        size: 200,
+                        hash: "deleteHash",
+                    }
+                ]
+            };
+
+            const diffs = thing.getDiffs(logger, localFiles, serverFiles, true, false, true);
+
+            expect(diffs.upload.length).toEqual(1); // Upload allowed
+            expect(diffs.delete.length).toEqual(1); // Delete allowed
+            expect(diffs.replace.length).toEqual(0); // Replace blocked
+
+            expect(diffs.sizeUpload).toEqual(500);
+            expect(diffs.sizeDelete).toEqual(200);
+            expect(diffs.sizeReplace).toEqual(0);
+        });
+
+        test("files with same hash are not replaced regardless of enableReplace", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "file.txt",
+                        size: 1000,
+                        hash: "sameHash",
+                    }
+                ]
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "file.txt",
+                        size: 1000,
+                        hash: "sameHash",
+                    }
+                ]
+            };
+
+            const diffsenableReplace = thing.getDiffs(logger, localFiles, serverFiles, true, true, true);
+            const diffsBlockReplace = thing.getDiffs(logger, localFiles, serverFiles, true, false, true);
+
+            // Both should have same results since files are identical
+            expect(diffsenableReplace.replace.length).toEqual(0);
+            expect(diffsBlockReplace.replace.length).toEqual(0);
+            expect(diffsenableReplace.same.length).toEqual(1);
+            expect(diffsBlockReplace.same.length).toEqual(1);
+        });
+    });
+
+    describe("combined boolean options", () => {
+        test("all options false - no operations allowed", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "newFile.txt",
+                        size: 500,
+                        hash: "newHash",
+                    },
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "changedHash",
+                    }
+                ]
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "originalHash",
+                    },
+                    {
+                        type: "file",
+                        name: "toDelete.txt",
+                        size: 200,
+                        hash: "deleteHash",
+                    }
+                ]
+            };
+
+            const diffs = thing.getDiffs(logger, localFiles, serverFiles, false, false, false);
+
+            expect(diffs.upload.length).toEqual(0);
+            expect(diffs.delete.length).toEqual(0);
+            expect(diffs.replace.length).toEqual(0);
+
+            expect(diffs.sizeUpload).toEqual(0);
+            expect(diffs.sizeDelete).toEqual(0);
+            expect(diffs.sizeReplace).toEqual(0);
+        });
+
+        test("only enableUpload=true", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "newFile.txt",
+                        size: 500,
+                        hash: "newHash",
+                    },
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "changedHash",
+                    }
+                ]
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "originalHash",
+                    },
+                    {
+                        type: "file",
+                        name: "toDelete.txt",
+                        size: 200,
+                        hash: "deleteHash",
+                    }
+                ]
+            };
+
+            const diffs = thing.getDiffs(logger, localFiles, serverFiles, true, false, false);
+
+            expect(diffs.upload.length).toEqual(1); // Only upload allowed
+            expect(diffs.delete.length).toEqual(0);
+            expect(diffs.replace.length).toEqual(0);
+
+            expect(diffs.sizeUpload).toEqual(500);
+            expect(diffs.sizeDelete).toEqual(0);
+            expect(diffs.sizeReplace).toEqual(0);
+        });
+
+        test("only enableDelete=true", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "newFile.txt",
+                        size: 500,
+                        hash: "newHash",
+                    },
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "changedHash",
+                    }
+                ]
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "originalHash",
+                    },
+                    {
+                        type: "file",
+                        name: "toDelete.txt",
+                        size: 200,
+                        hash: "deleteHash",
+                    }
+                ]
+            };
+
+            const diffs = thing.getDiffs(logger, localFiles, serverFiles, false, false, true);
+
+            expect(diffs.upload.length).toEqual(0);
+            expect(diffs.delete.length).toEqual(1); // Only delete allowed
+            expect(diffs.replace.length).toEqual(0);
+
+            expect(diffs.sizeUpload).toEqual(0);
+            expect(diffs.sizeDelete).toEqual(200);
+            expect(diffs.sizeReplace).toEqual(0);
+        });
+
+        test("only enableReplace=true", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "newFile.txt",
+                        size: 500,
+                        hash: "newHash",
+                    },
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "changedHash",
+                    }
+                ]
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "file",
+                        name: "existingFile.txt",
+                        size: 1000,
+                        hash: "originalHash",
+                    },
+                    {
+                        type: "file",
+                        name: "toDelete.txt",
+                        size: 200,
+                        hash: "deleteHash",
+                    }
+                ]
+            };
+
+            const diffs = thing.getDiffs(logger, localFiles, serverFiles, false, true, false);
+
+            expect(diffs.upload.length).toEqual(0);
+            expect(diffs.delete.length).toEqual(0);
+            expect(diffs.replace.length).toEqual(1); // Only replace allowed
+
+            expect(diffs.sizeUpload).toEqual(0);
+            expect(diffs.sizeDelete).toEqual(0);
+            expect(diffs.sizeReplace).toEqual(1000);
+        });
+
+        test("folder operations respect enableDelete option", () => {
+            const localFiles: IFileList = {
+                ...emptyFileList,
+                data: []
+            };
+
+            const serverFiles: IFileList = {
+                ...emptyFileList,
+                data: [
+                    {
+                        type: "folder",
+                        name: "folderToDelete/",
+                        size: undefined,
+                    },
+                    {
+                        type: "file",
+                        name: "fileToDelete.txt",
+                        size: 100,
+                        hash: "fileHash",
+                    }
+                ]
+            };
+
+            const diffsenableDelete = thing.getDiffs(logger, localFiles, serverFiles, true, true, true);
+            const diffsBlockDelete = thing.getDiffs(logger, localFiles, serverFiles, true, true, false);
+
+            expect(diffsenableDelete.delete.length).toEqual(2);
+            expect(diffsBlockDelete.delete.length).toEqual(0);
+
+            expect(diffsenableDelete.sizeDelete).toEqual(100);
+            expect(diffsBlockDelete.sizeDelete).toEqual(0);
+        });
     });
 });
 
@@ -252,7 +890,7 @@ describe("FTP sync commands", () => {
             generatedTime: new Date().getTime(),
             data: []
         };
-        const diffs = hashDiff.getDiffs(localFiles, serverFiles);
+        const diffs = hashDiff.getDiffs(mockedLogger, localFiles, serverFiles, true, true, true);
 
         expect(diffs.upload.length).toEqual(1);
         expect(diffs.delete.length).toEqual(0);
@@ -307,7 +945,7 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const diffs = hashDiff.getDiffs(localFiles, serverFiles);
+        const diffs = hashDiff.getDiffs(mockedLogger, localFiles, serverFiles, true, true, true);
 
         expect(diffs.upload.length).toEqual(1);
         expect(diffs.delete.length).toEqual(1);
@@ -371,7 +1009,7 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const diffs = hashDiff.getDiffs(localFiles, serverFiles);
+        const diffs = hashDiff.getDiffs(mockedLogger, localFiles, serverFiles, true, true, true);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(0);
@@ -420,7 +1058,7 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const diffs = hashDiff.getDiffs(localFiles, serverFiles);
+        const diffs = hashDiff.getDiffs(mockedLogger, localFiles, serverFiles, true, true, true);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(1);
@@ -476,7 +1114,7 @@ describe("FTP sync commands", () => {
                 }
             ]
         };
-        const diffs = hashDiff.getDiffs(localFiles, serverFiles);
+        const diffs = hashDiff.getDiffs(mockedLogger, localFiles, serverFiles, true, true, true);
 
         expect(diffs.upload.length).toEqual(0);
         expect(diffs.delete.length).toEqual(2);
@@ -590,6 +1228,9 @@ describe("getLocalFiles", () => {
             "log-level": "standard",
             security: "loose",
             timeout: 30000,
+            "enable-upload": true,
+            "enable-replace": true,
+            "enable-delete": true,
         });
 
         const mainYamlDiff = localDirDiffs.data.find(diff => diff.name === "workflows/main.yml")! as IFile;
@@ -741,7 +1382,10 @@ describe("getDefaultSettings", () => {
             exclude: excludeDefaults,
             "log-level": "standard",
             security: "loose",
-            timeout: 30000
+            timeout: 30000,
+            "enable-upload": true,
+            "enable-replace": true,
+            "enable-delete": true
         });
     });
 
@@ -760,7 +1404,10 @@ describe("getDefaultSettings", () => {
             exclude: [],
             "log-level": "verbose",
             security: "strict",
-            timeout: 1234
+            timeout: 1234,
+            "enable-upload": true,
+            "enable-replace": true,
+            "enable-delete": true
         };
 
         expect(getDefaultSettings(customSettings)).toEqual(customSettings);
@@ -784,7 +1431,7 @@ describe("error handling", () => {
         });
 
         await expect(async () => await deploy(argsWithDefaults, mockedLogger, mockedTimings)).rejects.toThrow();
-    }, 30000);
+    });
 });
 
 describe("dry-run", () => {
@@ -876,17 +1523,27 @@ describe("Deploy", () => {
     const port = 2121;
     const homeDir = path.join(__dirname, "../");
 
-    const ftpServer = new FtpSrv({
-        anonymous: true,
-        pasv_url: "127.0.0.1",
-        url: `ftp://127.0.0.1:${port}`,
-        tls: false,
-        blacklist: [],
-        whitelist: []
+    let ftpServer: FtpSrv;
+
+    beforeEach(() => {
+        ftpServer = new FtpSrv({
+            anonymous: true,
+            pasv_url: "127.0.0.1",
+            url: `ftp://127.0.0.1:${port}`,
+            tls: false,
+            blacklist: [],
+            whitelist: []
+        });
+
+        ftpServer.on("login", (data, resolve) => {
+            resolve({ root: homeDir });
+        });
     });
 
-    ftpServer.on("login", (data, resolve) => {
-        resolve({ root: homeDir });
+    afterEach(async () => {
+        if (ftpServer) {
+            await ftpServer.close();
+        }
     });
 
     test("Full Deploy", async () => {
@@ -906,7 +1563,195 @@ describe("Deploy", () => {
         });
 
         await deploy(argsWithDefaults, mockedLogger, mockedTimings);
+    });
 
-        ftpServer.close();
-    }, 30000);
+    test("Deploy with enableUpload=false verifies no upload calls", async () => {
+        // Create test data that would normally trigger uploads
+        const localFiles = createTestFileList([
+            {name: "new-file.txt", size: 1000, hash: "hash1"},
+            {name: "another-file.txt", size: 500, hash: "hash2"},
+            {name: "folder/", size: 0, hash: "", type: "folder"},
+            {name: "folder/nested-file.txt", size: 300, hash: "hash3"}
+        ]);
+        
+        const serverFiles = createTestFileList([]); // Empty server = would normally trigger uploads
+
+        // Test with enableUpload=false - should not call uploadFile for any uploads
+        const result = await testEnableOption(
+            localFiles, 
+            serverFiles, 
+            false, // enableUpload=false
+            true,  // enableReplace=true 
+            true,  // enableDelete=true
+            {
+                // No upload calls expected since enableUpload=false
+                uploadFile: [],
+                removeFile: [],
+                removeFolder: [],
+                createFolder: []
+            }
+        );
+
+        // Verify no uploads are planned when enableUpload=false
+        expect(result.diffs.upload.length).toEqual(0);
+        expect(result.diffs.sizeUpload).toEqual(0);
+    });
+
+    test("Deploy with enableDelete=false verifies no delete calls", async () => {
+        // Create test data that would normally trigger deletes
+        const localFiles = createTestFileList([
+            {name: "kept-file.txt", size: 1000, hash: "hash1"}
+        ]);
+        
+        const serverFiles = createTestFileList([
+            {name: "kept-file.txt", size: 1000, hash: "hash1"}, // Same file, should remain
+            {name: "delete-me.txt", size: 500, hash: "hash2"},   // Should be deleted if enabled
+            {name: "old-folder/", size: 0, hash: "", type: "folder"}, // Should be deleted if enabled
+            {name: "old-folder/old-file.txt", size: 300, hash: "hash3"} // Should be deleted if enabled
+        ]);
+
+        // Test with enableDelete=false - should not call removeFile or removeFolder
+        const result = await testEnableOption(
+            localFiles, 
+            serverFiles, 
+            true,  // enableUpload=true
+            true,  // enableReplace=true 
+            false, // enableDelete=false
+            {
+                uploadFile: [],
+                removeFile: [], // No delete calls expected since enableDelete=false
+                removeFolder: [], // No delete calls expected since enableDelete=false
+                createFolder: []
+            }
+        );
+
+        // Verify no deletes are planned when enableDelete=false
+        expect(result.diffs.delete.length).toEqual(0);
+        expect(result.diffs.sizeDelete).toEqual(0);
+    });
+
+    test("Deploy with enableReplace=false verifies no replace calls", async () => {
+        // Create test data that would normally trigger replaces
+        const localFiles = createTestFileList([
+            {name: "same-file.txt", size: 1000, hash: "hash1"},      // Same hash, no replace needed
+            {name: "changed-file.txt", size: 1000, hash: "newHash"}, // Different hash, would replace if enabled
+            {name: "another-changed.txt", size: 500, hash: "newHash2"} // Different hash, would replace if enabled
+        ]);
+        
+        const serverFiles = createTestFileList([
+            {name: "same-file.txt", size: 1000, hash: "hash1"},      // Same hash
+            {name: "changed-file.txt", size: 1000, hash: "oldHash"}, // Different hash
+            {name: "another-changed.txt", size: 500, hash: "oldHash2"} // Different hash
+        ]);
+
+        // Test with enableReplace=false - should not call uploadFile with "replace"
+        const result = await testEnableOption(
+            localFiles, 
+            serverFiles, 
+            true,  // enableUpload=true
+            false, // enableReplace=false
+            true,  // enableDelete=true
+            {
+                uploadFile: [], // No replace calls expected since enableReplace=false
+                removeFile: [],
+                removeFolder: [],
+                createFolder: []
+            }
+        );
+
+        // Verify no replaces are planned when enableReplace=false
+        expect(result.diffs.replace.length).toEqual(0);
+        expect(result.diffs.sizeReplace).toEqual(0);
+        
+        // But same files should still be tracked
+        expect(result.diffs.same.length).toEqual(1);
+        expect(result.diffs.same[0].name).toEqual("same-file.txt");
+    });
+
+    test("Deploy with all enable options disabled verifies no operation calls", async () => {
+        // Create comprehensive test data that would normally trigger all operations
+        const localFiles = createTestFileList([
+            {name: "same-file.txt", size: 1000, hash: "hash1"},      // Same hash, no operation needed
+            {name: "new-file.txt", size: 500, hash: "hash2"},        // Would upload if enabled
+            {name: "changed-file.txt", size: 800, hash: "newHash"}   // Would replace if enabled
+        ]);
+        
+        const serverFiles = createTestFileList([
+            {name: "same-file.txt", size: 1000, hash: "hash1"},      // Same hash
+            {name: "changed-file.txt", size: 800, hash: "oldHash"},  // Different hash
+            {name: "delete-me.txt", size: 300, hash: "hash3"},       // Would delete if enabled
+            {name: "old-folder/", size: 0, hash: "", type: "folder"} // Would delete if enabled
+        ]);
+
+        // Test with all options disabled - should not call any operation methods
+        const result = await testEnableOption(
+            localFiles, 
+            serverFiles, 
+            false, // enableUpload=false
+            false, // enableReplace=false
+            false, // enableDelete=false
+            {
+                uploadFile: [],   // No operations expected
+                removeFile: [],   // No operations expected
+                removeFolder: [], // No operations expected
+                createFolder: []  // No operations expected
+            }
+        );
+
+        // Verify no operations are planned when all options are disabled
+        expect(result.diffs.upload.length).toEqual(0);
+        expect(result.diffs.replace.length).toEqual(0);
+        expect(result.diffs.delete.length).toEqual(0);
+        expect(result.diffs.sizeUpload).toEqual(0);
+        expect(result.diffs.sizeReplace).toEqual(0);
+        expect(result.diffs.sizeDelete).toEqual(0);
+        
+        // Only same files should be tracked
+        expect(result.diffs.same.length).toEqual(1);
+        expect(result.diffs.same[0].name).toEqual("same-file.txt");
+    });
+
+    test("Deploy with all enable options enabled verifies correct operation calls", async () => {
+        // Create comprehensive test data that triggers all operations
+        const localFiles = createTestFileList([
+            {name: "same-file.txt", size: 1000, hash: "hash1"},      // Same hash, no operation needed
+            {name: "new-file.txt", size: 500, hash: "hash2"},        // Should upload
+            {name: "new-folder/", size: 0, hash: "", type: "folder"}, // Should create folder
+            {name: "new-folder/nested-file.txt", size: 200, hash: "hash4"}, // Should upload
+            {name: "changed-file.txt", size: 800, hash: "newHash"}   // Should replace
+        ]);
+        
+        const serverFiles = createTestFileList([
+            {name: "same-file.txt", size: 1000, hash: "hash1"},      // Same hash
+            {name: "changed-file.txt", size: 800, hash: "oldHash"},  // Different hash
+            {name: "delete-me.txt", size: 300, hash: "hash3"},       // Should delete
+            {name: "old-folder/", size: 0, hash: "", type: "folder"} // Should delete
+        ]);
+
+        // Test with all options enabled - should call appropriate operation methods
+        const result = await testEnableOption(
+            localFiles, 
+            serverFiles, 
+            true, // enableUpload=true
+            true, // enableReplace=true
+            true, // enableDelete=true
+            {
+                uploadFile: [
+                    {file: "new-file.txt", type: "upload"},
+                    {file: "new-folder/nested-file.txt", type: "upload"},
+                    {file: "changed-file.txt", type: "replace"}
+                ],
+                removeFile: ["delete-me.txt"],
+                removeFolder: ["old-folder/"],
+                createFolder: ["new-folder/"]
+            }
+        );
+
+        // Verify operations are planned correctly when all options are enabled
+        expect(result.diffs.upload.length).toEqual(3); // 2 files + 1 folder
+        expect(result.diffs.replace.length).toEqual(1);
+        expect(result.diffs.delete.length).toEqual(2); // 1 file + 1 folder
+        expect(result.diffs.same.length).toEqual(1);
+    });
+
 });
