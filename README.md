@@ -75,3 +75,4 @@ To list all commands with examples simply run `ftp-deploy` without any options.
 | `--log-level`             | No       | `info`                     | `info`                                        | `minimal`: only important info, `standard`: important info and basic file changes, `verbose`: print everything the script is doing                                 |
 | `--security`              | No       | `strict`                   | `loose`                                       | `strict`: Reject any connection which is not authorized with the list of supplied CAs. `loose`: Allow connection even when the domain is not in certificate        |
 | `--timeout`               | No       | `60000`                    | `30000`                                       | Timeout in milliseconds for FTP operations                                                                                                                         |
+

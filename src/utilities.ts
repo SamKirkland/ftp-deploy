@@ -189,6 +189,9 @@ export function getDefaultSettings(withoutDefaults: IFtpDeployArguments): IFtpDe
         "log-level": withoutDefaults["log-level"] ?? "standard",
         "security": withoutDefaults.security ?? "loose",
         "timeout": withoutDefaults.timeout ?? 30000,
+        "enable-upload": withoutDefaults["enable-upload"] ?? true,
+        "enable-replace": withoutDefaults["enable-replace"] ?? true,
+        "enable-delete": withoutDefaults["enable-delete"] ?? true,
     };
 }
 
