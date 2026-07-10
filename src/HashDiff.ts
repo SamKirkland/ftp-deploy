@@ -96,7 +96,10 @@ export class HashDiff implements IDiff {
         const optimizedDeleteList = deleteList.filter((itemToDelete) => {
             const parentFolderIsBeingDeleted = foldersToDelete.find((folder) => {
                 const isSameFile = itemToDelete.name === folder.name;
-                const parentFolderExists = itemToDelete.name.startsWith(folder.name);
+                // compare against the folder path including a trailing slash, otherwise
+                // a sibling sharing a name prefix (e.g. "folder-two" vs "folder") would also match
+                const folderPathPrefix = folder.name.endsWith("/") ? folder.name : folder.name + "/";
+                const parentFolderExists = itemToDelete.name.startsWith(folderPathPrefix);
 
                 return parentFolderExists && !isSameFile;
             }) !== undefined;

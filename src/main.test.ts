@@ -225,6 +225,58 @@ describe("HashDiff", () => {
         expect(diffs.sizeDelete).toEqual(1000);
         expect(diffs.sizeReplace).toEqual(0);
     });
+
+    test("Delete sibling folders where one name is a prefix of the other", () => {
+        const clientState: IFileList = {
+            ...emptyFileList,
+            data: []
+        };
+
+        // real folder records have no trailing slash (see getLocalFiles)
+        const serverState: IFileList = {
+            ...emptyFileList,
+            data: [
+                {
+                    type: "folder",
+                    name: "folder/subFolder",
+                    size: undefined,
+                },
+                {
+                    type: "file",
+                    name: "folder/subFolder/file.txt",
+                    size: 1000,
+                    hash: "fakeHashContent"
+                },
+                {
+                    type: "folder",
+                    name: "folder/subFolder-two",
+                    size: undefined,
+                },
+                {
+                    type: "file",
+                    name: "folder/subFolder-two/file.txt",
+                    size: 1000,
+                    hash: "fakeHashContent"
+                }
+            ]
+        };
+
+        const diffs = thing.getDiffs(clientState, serverState);
+
+        expect(diffs.upload.length).toEqual(0);
+        expect(diffs.replace.length).toEqual(0);
+
+        // both folders must be deleted - "folder/subFolder-two" is a sibling of
+        // "folder/subFolder", not a child, and must not be optimized away
+        expect(diffs.delete.map(item => item.name).sort()).toStrictEqual([
+            "folder/subFolder",
+            "folder/subFolder-two"
+        ]);
+
+        expect(diffs.sizeUpload).toEqual(0);
+        expect(diffs.sizeDelete).toEqual(2000);
+        expect(diffs.sizeReplace).toEqual(0);
+    });
 });
 
 describe("FTP sync commands", () => {
