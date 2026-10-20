@@ -11,6 +11,7 @@
     "moduleResolution": "Node"
   },
   "exclude": [
+    "src/e2e",
     "node_modules",
     "dist",
     ".github"

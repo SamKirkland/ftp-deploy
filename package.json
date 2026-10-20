@@ -10,8 +10,10 @@
   "scripts": {
     "build": "tsc",
     "deploy": "tsc && node ./dist/cli.js --log-level verbose ---server samkirkland.com --protocol ftp --username \"ftp-deploy@samkirkland.com\" --password \"actualPasswordHere\" --exclude dist/** --exclude **/.git* --exclude **/.git*/** --exclude **/node_modules/** --exclude package.json",
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint src/**/*.ts --ignore-pattern src/e2e",
     "test": "jest",
+    "test:unit": "jest --testPathIgnorePatterns src/e2e",
+    "test:e2e": "jest src/e2e",
     "test-watch": "jest --watch"
   },
   "repository": {
