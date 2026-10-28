@@ -44,8 +44,8 @@ describe("fault injection", () => {
             expect(s.readRemoteState()).toBeUndefined();
         });
 
-        // BUG: basic-ftp's ensureDir ignores the MKD error and the following CWD fails with 550, which retryRequest does not retry
-        test.failing("transient 450 on MKD is retried", async () => {
+        // Regression (was a bug): basic-ftp's ensureDir ignores the MKD error and the following CWD fails with 550, which retryRequest does not retry
+        test("transient 450 on MKD is retried", async () => {
             s.server.failWith("MKD", 450, { times: 1, skip: 1 });
             s.setLocal({ dir: { "a.txt": "a" } });
             (await s.deploy()).expectOk();
@@ -60,24 +60,29 @@ describe("fault injection", () => {
             s.server.resetCommandLog();
         });
 
-        test("550 on DELE is skipped and the deploy continues", async () => {
+        test("550 on DELE of a file that is already gone is skipped and the deploy continues", async () => {
             s.server.failWith("DELE", 550);
+            s.removeRemote("a.txt");
             s.removeLocal("a.txt");
             const run = (await s.deploy()).expectOk();
             expect(run.logText).toMatch(/skipping/i);
         });
 
-        test("550 on RMD is skipped and the deploy continues", async () => {
+        test("550 on RMD of a folder that is still there fails the deploy, a healthy rerun converges", async () => {
             s.server.failWith("RMD", 550);
             s.removeLocal("dir");
+            expect((await s.deploy()).ok).toBe(false);
+            expect(s.remoteExists("dir")).toBe(true);
+
+            s.server.clearRules();
             (await s.deploy()).expectOk();
+            s.expectRemoteInSync();
         });
 
-        // BUG: a permission-denied delete is indistinguishable from "already gone", state is updated and the file is orphaned forever
-        test.failing("a delete that failed with 550 must not be forgotten (file is still there)", async () => {
+        test("a delete that failed with 550 must not be forgotten (file is still there)", async () => {
             s.server.failWith("DELE", 550);
             s.removeLocal("a.txt");
-            (await s.deploy()).expectOk();
+            await s.deploy();
             s.server.clearRules();
 
             (await s.deploy()).expectOk();
@@ -185,8 +190,8 @@ describe("fault injection", () => {
     });
 
     describe("state download problems", () => {
-        // BUG: any error fetching the state file is treated as "first publish": deleted files are orphaned, everything is re-uploaded
-        test.failing("a failing RETR of the state file must not be silently treated as a first publish", async () => {
+        // Regression (was a bug): any error fetching the state file is treated as "first publish": deleted files are orphaned, everything is re-uploaded
+        test("a failing RETR of the state file must not be silently treated as a first publish", async () => {
             s.setLocal({ "a.txt": "a", "b.txt": "b" });
             (await s.deploy()).expectOk();
             s.server.resetCommandLog();

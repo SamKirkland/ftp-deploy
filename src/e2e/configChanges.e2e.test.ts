@@ -259,8 +259,8 @@ describe("state tampering and corruption", () => {
         fs.rmSync(path.join(s.remoteRoot, "..", "outside-victim.txt"), { force: true });
     });
 
-    // BUG: duplicate entries in the state file make the diff delete the (healthy) files they describe, uploads nothing and reports success
-    test.failing("state with duplicate entries does not wipe the remote", async () => {
+    // Regression (was a bug): duplicate entries in the state file make the diff delete the (healthy) files they describe, uploads nothing and reports success
+    test("state with duplicate entries does not wipe the remote", async () => {
         const st = s.readRemoteState();
         st.data.push(...st.data.map((d: any) => ({ ...d })));
         s.writeRemoteState(st);
@@ -268,8 +268,8 @@ describe("state tampering and corruption", () => {
         s.expectRemoteInSync();
     });
 
-    // BUG: the order of entries in the state file changes between runs for an identical file set (diff noise, ftp-deploy#49)
-    test.failing("#49 state file ordering is deterministic across runs", async () => {
+    // Regression (was a bug): the order of entries in the state file changes between runs for an identical file set (diff noise, ftp-deploy#49)
+    test("#49 state file ordering is deterministic across runs", async () => {
         s.patchLocal({ "B.txt": "b", "a-b.txt": "x", "a.b.txt": "y", "a_b.txt": "z", "é.txt": "e", "e.txt": "e2", "Z.txt": "z" });
         (await s.deploy()).expectOk();
         const names = () => s.readRemoteState().data.map((d: any) => d.name).filter((n: string) => n !== ".ftp-deploy-sync-state.json");

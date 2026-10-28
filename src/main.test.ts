@@ -3,6 +3,7 @@ import { IFileList, currentSyncFileVersion, IFile, IFtpDeployArgumentsWithDefaul
 import { Record } from "./types";
 import { applyExcludeFilter, getDefaultSettings, ILogger, Timings } from "./utilities";
 import path from "path";
+import { Readable } from "stream";
 import FtpSrv from "ftp-srv";
 import { getLocalFiles } from "./localFiles";
 import { FTPSyncProvider } from "./syncProvider";
@@ -269,14 +270,14 @@ describe("FTP sync commands", () => {
         const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false);
         const spyRemoveFile = jest.spyOn(syncProvider, "uploadFile");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
-        await syncProvider.syncLocalToServer(diffs);
+        await syncProvider.syncLocalToServer(diffs, localFiles);
 
         expect(spyRemoveFile).toHaveBeenCalledTimes(1);
         expect(spyRemoveFile).toHaveBeenCalledWith("path/file.txt", "upload");
 
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(2);
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/path/file.txt", "path/file.txt");
-        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(2, "local-dir/state-name", "state-name");
+        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(2, expect.any(Readable), "state-name");
     });
 
     test("rename file", async () => {
@@ -327,7 +328,7 @@ describe("FTP sync commands", () => {
         const spyRemoveFile = jest.spyOn(syncProvider, "removeFile");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
         const mockClientRemove = jest.spyOn(mockClient, "remove");
-        await syncProvider.syncLocalToServer(diffs);
+        await syncProvider.syncLocalToServer(diffs, localFiles);
 
         expect(spyRemoveFile).toHaveBeenCalledTimes(1);
         expect(spyRemoveFile).toHaveBeenCalledWith("path/oldFile.txt");
@@ -340,7 +341,7 @@ describe("FTP sync commands", () => {
 
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(2);
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/path/newName.txt", "path/newName.txt");
-        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(2, "local-dir/state-name", "state-name");
+        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(2, expect.any(Readable), "state-name");
     });
 
     test("replace file", async () => {
@@ -389,14 +390,14 @@ describe("FTP sync commands", () => {
         const syncProvider = new FTPSyncProvider(mockClient as any, mockedLogger, mockedTimings, "local-dir/", "server-dir/", "state-name", false);
         const spyUploadFile = jest.spyOn(syncProvider, "uploadFile");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
-        await syncProvider.syncLocalToServer(diffs);
+        await syncProvider.syncLocalToServer(diffs, localFiles);
 
         expect(spyUploadFile).toHaveBeenCalledTimes(1);
         expect(spyUploadFile).toHaveBeenCalledWith("path/file.txt", "replace");
 
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(2);
         expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/path/file.txt", "path/file.txt");
-        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(2, "local-dir/state-name", "state-name");
+        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(2, expect.any(Readable), "state-name");
     });
 
     test("remove file", async () => {
@@ -439,7 +440,7 @@ describe("FTP sync commands", () => {
         const spyRemoveFile = jest.spyOn(syncProvider, "removeFile");
         const mockClientRemove = jest.spyOn(mockClient, "remove");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
-        await syncProvider.syncLocalToServer(diffs);
+        await syncProvider.syncLocalToServer(diffs, localFiles);
 
         expect(spyRemoveFile).toHaveBeenCalledTimes(1);
         expect(spyRemoveFile).toHaveBeenCalledWith("path/file.txt");
@@ -448,7 +449,7 @@ describe("FTP sync commands", () => {
         expect(mockClientRemove).toHaveBeenNthCalledWith(1, "path/file.txt");
 
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(1);
-        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/state-name", "state-name");
+        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, expect.any(Readable), "state-name");
     });
 
     test("remove folder", async () => {
@@ -489,7 +490,8 @@ describe("FTP sync commands", () => {
         const mockClient = {
             ensureDir() { },
             remove() { },
-            removeDir() { },
+            list() { return []; },
+            send() { },
             uploadFrom() { },
             cdup() { },
         };
@@ -497,22 +499,22 @@ describe("FTP sync commands", () => {
         const spyRemoveFolder = jest.spyOn(syncProvider, "removeFolder");
         const mockClientRemove = jest.spyOn(mockClient, "remove");
         const mockClientUploadFrom = jest.spyOn(mockClient, "uploadFrom");
-        const mockClientRemoveDir = jest.spyOn(mockClient, "removeDir");
-        await syncProvider.syncLocalToServer(diffs);
+        const mockClientSend = jest.spyOn(mockClient, "send");
+        await syncProvider.syncLocalToServer(diffs, localFiles);
 
         expect(spyRemoveFolder).toHaveBeenCalledTimes(2);
         expect(spyRemoveFolder).toHaveBeenCalledWith("path/folder/");
         expect(spyRemoveFolder).toHaveBeenCalledWith("baseFolder/");
 
-        // these paths should be absolute
-        expect(mockClientRemoveDir).toHaveBeenCalledTimes(2);
-        expect(mockClientRemoveDir).toHaveBeenNthCalledWith(2, "/server-dir/path/folder/");
-        expect(mockClientRemoveDir).toHaveBeenNthCalledWith(1, "/server-dir/baseFolder/");
+        // these paths are relative to server-dir (the working dir)
+        expect(mockClientSend).toHaveBeenCalledTimes(2);
+        expect(mockClientSend).toHaveBeenNthCalledWith(2, "RMD path/folder");
+        expect(mockClientSend).toHaveBeenNthCalledWith(1, "RMD baseFolder");
 
         expect(mockClientRemove).toHaveBeenCalledTimes(0);
 
         expect(mockClientUploadFrom).toHaveBeenCalledTimes(1);
-        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, "local-dir/state-name", "state-name");
+        expect(mockClientUploadFrom).toHaveBeenNthCalledWith(1, expect.any(Readable), "state-name");
     });
 });
 
@@ -794,6 +796,7 @@ describe("dry-run", () => {
         const mockClient = {
             clearWorkingDir() { },
             ensureDir() { },
+            cd() { },
         };
         const settings = getDefaultSettings({
             server: "a",
@@ -863,7 +866,7 @@ describe("dry-run", () => {
         const spyRemoveFile = jest.spyOn(mockClient, "removeFile");
         const spyUploadFrom = jest.spyOn(mockClient, "uploadFrom");
         const spyRemove = jest.spyOn(mockClient, "remove");
-        await syncProvider.syncLocalToServer(mockedDiffs);
+        await syncProvider.syncLocalToServer(mockedDiffs, { description: "", version: currentSyncFileVersion, generatedTime: 0, data: [] });
 
         expect(spyUploadFile).toHaveBeenCalledTimes(0);
         expect(spyRemoveFile).toHaveBeenCalledTimes(0);

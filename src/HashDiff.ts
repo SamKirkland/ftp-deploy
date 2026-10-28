@@ -29,6 +29,20 @@ export async function fileHash(filename: string, algorithm: "md5" | "sha1" | "sh
     });
 }
 
+/**
+ * Compares by code point. localeCompare ignores case/punctuation differences on some platforms, which breaks the
+ * merge-join below and makes the order depend on the machine's locale
+ */
+export function compareNames(first: string, second: string): number {
+    return first < second ? -1 : first > second ? 1 : 0;
+}
+
+/** sorted copy without duplicate names (first one wins) */
+function sortedUnique(records: Record[]): Record[] {
+    const sorted = [...records].sort((first, second) => compareNames(first.name, second.name));
+    return sorted.filter((record, index) => index === 0 || sorted[index - 1].name !== record.name);
+}
+
 export class HashDiff implements IDiff {
     getDiffs(localFiles: IFileList, serverFiles: IFileList) {
         const uploadList: Record[] = [];
@@ -42,8 +56,8 @@ export class HashDiff implements IDiff {
         let sizeReplace = 0;
 
         // alphabetize each list based off path
-        const localFilesSorted = localFiles.data.sort((first, second) => first.name.localeCompare(second.name));
-        const serverFilesSorted = serverFiles.data.sort((first, second) => first.name.localeCompare(second.name));
+        const localFilesSorted = sortedUnique(localFiles.data);
+        const serverFilesSorted = sortedUnique(serverFiles.data);
 
         let localPosition = 0;
         let serverPosition = 0;
@@ -59,7 +73,7 @@ export class HashDiff implements IDiff {
                 fileNameCompare = -1;
             }
             if (localFile !== undefined && serverFile !== undefined) {
-                fileNameCompare = localFile.name.localeCompare(serverFile.name);
+                fileNameCompare = compareNames(localFile.name, serverFile.name);
             }
 
             if (fileNameCompare < 0) {
@@ -83,6 +97,13 @@ export class HashDiff implements IDiff {
                         replaceList.push(localFile);
                     }
                 }
+                else if (localFile.type !== serverFile.type) {
+                    // a file became a folder (or the other way around), the old one has to go before the new one is created
+                    deleteList.push(serverFile);
+                    sizeDelete += serverFile.size ?? 0;
+                    uploadList.push(localFile);
+                    sizeUpload += localFile.size ?? 0;
+                }
 
                 localPosition += 1;
                 serverPosition += 1;
@@ -90,20 +111,19 @@ export class HashDiff implements IDiff {
         }
 
         // optimize modifications
-        let foldersToDelete = deleteList.filter((item) => item.type === "folder");
+        const foldersToDelete = new Set(deleteList.filter((item) => item.type === "folder").map((item) => item.name));
 
-        // remove files/folders that have a nested parent folder we plan on deleting
+        // remove files/folders that have a parent folder we plan on deleting (removing a folder removes its contents)
         const optimizedDeleteList = deleteList.filter((itemToDelete) => {
-            const parentFolderIsBeingDeleted = foldersToDelete.find((folder) => {
-                const isSameFile = itemToDelete.name === folder.name;
-                const parentFolderExists = itemToDelete.name.startsWith(folder.name);
-
-                return parentFolderExists && !isSameFile;
-            }) !== undefined;
-
-            if (parentFolderIsBeingDeleted) {
-                // a parent folder is being deleted, no need to delete this one
-                return false;
+            // a slash at the very end belongs to the item itself, not a parent
+            const name = itemToDelete.name.endsWith("/") ? itemToDelete.name.slice(0, -1) : itemToDelete.name;
+            let slash = name.indexOf("/");
+            while (slash !== -1) {
+                // folder names can be stored with or without a trailing slash
+                if (foldersToDelete.has(name.substring(0, slash)) || foldersToDelete.has(name.substring(0, slash + 1))) {
+                    return false;
+                }
+                slash = name.indexOf("/", slash + 1);
             }
 
             return true;

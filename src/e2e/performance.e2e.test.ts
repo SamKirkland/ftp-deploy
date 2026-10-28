@@ -60,8 +60,7 @@ describe("performance", () => {
         expect(run.commands.length).toBeLessThan(200 * 4 + 30);
     });
 
-    // BUG: every level of a new deep path is created by re-walking the whole path from the root (MKD+CWD for every ancestor
-    // on every level, then CDUP back), so N levels cost ~N^2 commands. 30 levels = ~1400 round trips, 100 levels = ~15000
+    // every level of a new deep path used to be created by re-walking the whole path from the root, so N levels cost ~N^2 commands
     const deepDeploy = async (depth: number) => {
         s = await Scenario.create();
         const deep = Array.from({ length: depth }, (_, i) => `l${i}`).join("/");
@@ -74,12 +73,12 @@ describe("performance", () => {
     });
 
     for (const depth of [20, 30, 50]) {
-        test.failing(`creating a new ${depth} level deep path is linear in depth`, async () => {
+        test(`creating a new ${depth} level deep path is linear in depth`, async () => {
             expect((await deepDeploy(depth)).commands.length).toBeLessThan(depth * 8 + 30);
         });
     }
 
-    test("deep path cost grows quadratically (documents the shape)", async () => {
+    test("deep path cost grows linearly", async () => {
         const counts: number[] = [];
         for (const depth of [10, 20]) {
             s = await Scenario.create();
@@ -89,8 +88,8 @@ describe("performance", () => {
             await s.destroy();
         }
         s = await Scenario.create();
-        // doubling depth more than doubles the cost
-        expect(counts[1] / counts[0]).toBeGreaterThan(2.5);
+        // doubling depth at most doubles the cost (quadratic would be ~4x)
+        expect(counts[1] / counts[0]).toBeLessThan(2.5);
     });
 
     test("deleting a deep tree is linear in depth", async () => {
@@ -127,9 +126,9 @@ describe("performance", () => {
             expect(time(() => diff(mk(), mk()))).toBeLessThan(3000);
         });
 
-        // BUG: the "skip children of deleted folders" pass compares every deleted item with every deleted folder (O(n*m)).
+        // Regression (was a bug): the "skip children of deleted folders" pass compares every deleted item with every deleted folder (O(n*m)).
         // 4x more deletes takes ~16x longer; 50000 deletes with 10000 folders takes over a second
-        test.failing("deleting many files and folders scales roughly linearly", () => {
+        test("deleting many files and folders scales roughly linearly", () => {
             const build = (n: number) => {
                 const folders = Array.from({ length: n / 5 }, (_, i) => rec(`f${i}`, "folder"));
                 const files = Array.from({ length: n }, (_, i) => rec(`x${i}.txt`));

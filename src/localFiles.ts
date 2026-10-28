@@ -1,6 +1,6 @@
 import readdir from "@jsdevtools/readdir-enhanced";
 import { Record, IFileList, syncFileDescription, currentSyncFileVersion, IFtpDeployArgumentsWithDefaults } from "./types";
-import { fileHash } from "./HashDiff";
+import { compareNames, fileHash } from "./HashDiff";
 import { applyExcludeFilter } from "./utilities";
 
 export async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Promise<IFileList> {
@@ -33,6 +33,9 @@ export async function getLocalFiles(args: IFtpDeployArgumentsWithDefaults): Prom
             console.warn("This script is currently unable to handle symbolic links - please add a feature request if you need this");
         }
     }
+
+    // readdir returns files in whatever order the OS gives them, sort so the state file is stable between runs
+    records.sort((first, second) => compareNames(first.name, second.name));
 
     return {
         description: syncFileDescription,

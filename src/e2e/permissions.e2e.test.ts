@@ -154,20 +154,20 @@ describe("permissions", () => {
             expect(String(run.error)).toContain(String(code));
         });
 
-        // BUG: DELE/RMD 550 is swallowed as "already gone". A permission denied delete reports success and orphans the file.
-        test.failing("update: DELE answered with 550 (permission denied) fails", async () => {
+        // Regression (was a bug): DELE/RMD 550 is swallowed as "already gone". A permission denied delete reports success and orphans the file.
+        test("update: DELE answered with 550 (permission denied) fails", async () => {
             await seedThenChange();
             s.server.failWith(verbRe("DELE"), 550);
             expect((await s.deploy({ timeout: 4000 })).ok).toBe(false);
         });
 
-        test.failing("update: RMD answered with 550 (permission denied) fails", async () => {
+        test("update: RMD answered with 550 (permission denied) fails", async () => {
             await seedThenChange();
             s.server.failWith(verbRe("RMD"), 550);
             expect((await s.deploy({ timeout: 4000 })).ok).toBe(false);
         });
 
-        test.failing("update: DELE 550 does not drop the file from the state file", async () => {
+        test("update: DELE 550 does not drop the file from the state file", async () => {
             await seedThenChange();
             s.server.failWith(/^DELE a\.txt/, 550);
             await s.deploy({ timeout: 4000 });
@@ -185,9 +185,9 @@ describe("permissions", () => {
             expect(s.readRemoteState()).toBeUndefined();
         });
 
-        // BUG: basic-ftp's ensureDir drops the MKD reply and the following CWD fails with "550 ENOENT", so the user never sees why
+        // Regression (was a bug): basic-ftp's ensureDir drops the MKD reply and the following CWD fails with "550 ENOENT", so the user never sees why
         for (const code of [530, 553, 421, 452]) {
-            test.failing(`MKD answered with ${code}: the error shows that reply, not a later CWD failure`, async () => {
+            test(`MKD answered with ${code}: the error shows that reply, not a later CWD failure`, async () => {
                 await seed();
                 s.server.addRule({ match: verbRe("MKD"), action: { type: "reply", code, message: "no create here" }, skip: 1 });
                 const run = await s.deploy({ timeout: 4000 });
@@ -198,9 +198,9 @@ describe("permissions", () => {
 
     // ---------------------------------------------------------------------------------------------
     describe("state file access", () => {
-        // BUG: any failure while fetching the state file is treated as "first publish"
+        // Regression (was a bug): any failure while fetching the state file is treated as "first publish"
         for (const code of [530, 421, 450, 502]) {
-            test.failing(`update: RETR of the state file answered with ${code} is not treated as a first publish`, async () => {
+            test(`update: RETR of the state file answered with ${code} is not treated as a first publish`, async () => {
                 await seedThenChange();
                 s.server.failWith(/^RETR \.ftp-deploy-sync-state\.json/, code);
                 const run = await s.deploy({ timeout: 4000 });
@@ -208,7 +208,7 @@ describe("permissions", () => {
             });
         }
 
-        test.failing("update: RETR denied (read protected state) re-uploads nothing it should not and deletes nothing wrongly", async () => {
+        test("update: RETR denied (read protected state) re-uploads nothing it should not and deletes nothing wrongly", async () => {
             await seedThenChange();
             s.server.failWith(/^RETR \.ftp-deploy-sync-state\.json/, 550);
             const run = await s.deploy({ timeout: 4000 });
@@ -383,9 +383,9 @@ describe("permissions", () => {
 
     // ---------------------------------------------------------------------------------------------
     describe("directories the account cannot enter or create (server-dir)", () => {
-        // BUG: basic-ftp ensureDir lets a denied CWD pass, so the files are uploaded into the HOME directory and the run
+        // Regression (was a bug): basic-ftp ensureDir lets a denied CWD pass, so the files are uploaded into the HOME directory and the run
         // reports success while saying it deployed to "private/"
-        test.failing("CWD into server-dir denied: nothing is uploaded anywhere", async () => {
+        test("CWD into server-dir denied: nothing is uploaded anywhere", async () => {
             await seed();
             s.server.failWith(/^CWD private/, 550);
             const run = await s.deploy({ "server-dir": "private/" });
@@ -394,8 +394,8 @@ describe("permissions", () => {
             expect(fs.readdirSync(s.remoteRoot).filter(n => n !== "private")).toEqual([]);
         });
 
-        // BUG: same as above, MKD of the server-dir denied -> files land in the home directory, success reported
-        test.failing("server-dir cannot be created (MKD denied) fails and uploads nothing to the home directory", async () => {
+        // Regression (was a bug): same as above, MKD of the server-dir denied -> files land in the home directory, success reported
+        test("server-dir cannot be created (MKD denied) fails and uploads nothing to the home directory", async () => {
             await seed();
             s.server.failWith(/^MKD site/, 550);
             const run = await s.deploy({ "server-dir": "site/" });
@@ -469,17 +469,17 @@ describe("permissions", () => {
             s.removeLocal("gone");
             s.server.failWith(verbRe("RETR"), 502);
             const run = await s.deploy({ timeout: 4000 });
-            // BUG pinned loosely: the library cannot know what is on the server and carries on, orphaning the deleted files
+            // the library cannot know what is on the server and carries on, orphaning the deleted files
             if (run.ok) { expect(s.remoteExists("a.txt")).toBe(true); }
         });
     });
 
     // ---------------------------------------------------------------------------------------------
     describe("dangerous-clean-slate without delete rights", () => {
-        // BUG: any failure inside getServerFiles, including a failed wipe, is turned into "first publish" so the deploy
+        // Regression (was a bug): any failure inside getServerFiles, including a failed wipe, is turned into "first publish" so the deploy
         // carries on uploading on top of the content that could not be removed
         for (const [verb, code] of [["DELE", 550], ["RMD", 550], ["LIST", 550], ["DELE", 530], ["LIST", 530]] as [string, number][]) {
-            test.failing(`clean slate with ${verb} denied (${code}) does not report success`,
+            test(`clean slate with ${verb} denied (${code}) does not report success`,
             async () => {
                 await seed();
                 (await s.deploy()).expectOk();
@@ -518,8 +518,8 @@ describe("permissions", () => {
             expect(s.server.commandsOf("PASS")).toEqual([]);
         });
 
-        // BUG: a refused PROT P (private data channel) is ignored and the deploy carries on and reports success
-        test.failing("PBSZ/PROT refused (536) on ftps fails", async () => {
+        // Regression (was a bug): a refused PROT P (private data channel) is ignored and the deploy carries on and reports success
+        test("PBSZ/PROT refused (536) on ftps fails", async () => {
             s = await Scenario.create({ server: { tls: "explicit", credentials: CREDS } });
             s.setLocal({ "a.txt": "a" });
             s.server.failWith(/^PROT/, 536);
@@ -588,13 +588,15 @@ describe("permissions", () => {
             expect(run.ok).toBe(false);
         });
 
-        (posix ? test : test.skip)("read only local-dir (cannot write the local state file) fails with a readable error", async () => {
+        // the state is uploaded from memory, local-dir is never written to
+        (posix ? test : test.skip)("read only local-dir deploys fine", async () => {
             await seed();
+            s.patchLocal({ "new.txt": "n" });
             fs.chmodSync(s.localDir, 0o555);
             const run = await s.deploy();
             fs.chmodSync(s.localDir, 0o755);
-            expect(run.ok).toBe(false);
-            expect(s.server.uploads()).toEqual([]);
+            run.expectOk();
+            s.expectRemoteInSync();
         });
     });
 });

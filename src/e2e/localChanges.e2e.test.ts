@@ -155,8 +155,8 @@ describe("local changes after a synced deploy", () => {
         (await s.deploy()).expectOk();
 
         s.expectRemote({});
-        // the previous run's local state file is still in the folder, so the state only ever lists itself
-        expect(s.readRemoteState().data.map((d: any) => d.name)).toEqual([".ftp-deploy-sync-state.json"]);
+        // the state file never lists itself
+        expect(s.readRemoteState().data.map((d: any) => d.name)).toEqual([]);
     });
 
     test("renamed file = upload new + delete old", async () => {
@@ -234,8 +234,9 @@ describe("local changes after a synced deploy", () => {
 
         const names = s.readRemoteState().data.map((d: any) => d.name);
         const localNames = Object.keys(s.localTree());
-        // the local state file is itself part of the local scan on the 2nd+ deploy
-        expect(names.filter((n: string) => n !== ".ftp-deploy-sync-state.json").sort()).toEqual(localNames.sort());
+        expect(names.sort()).toEqual(localNames.sort());
+        // no copy of the state is written into local-dir anymore
+        expect(names).not.toContain(".ftp-deploy-sync-state.json");
     });
 });
 

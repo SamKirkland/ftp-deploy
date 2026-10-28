@@ -1,7 +1,6 @@
 /**
  * Reproductions of reported issues from SamKirkland/ftp-deploy and SamKirkland/FTP-Deploy-Action.
- * Each test asserts the CORRECT behaviour. Confirmed library bugs are marked `test.failing`
- * (remove `.failing` once fixed).
+ * Each test asserts the CORRECT behaviour. Tests marked "Regression (was a bug)" pinned library bugs that have since been fixed.
  */
 import fs from "fs";
 import path from "path";
@@ -9,20 +8,13 @@ import { Scenario } from "./harness/scenario";
 
 jest.setTimeout(60000);
 
-// the test server serves a real directory, so on Windows/macOS it behaves like a case-insensitive FTP server
-const probe = path.join(require("os").tmpdir(), `CaseProbe-${process.pid}`);
-fs.writeFileSync(probe, "");
-const caseInsensitiveFs = fs.existsSync(probe.toLowerCase());
-fs.unlinkSync(probe);
-const failingOnCaseInsensitiveFs = caseInsensitiveFs ? test.failing : test;
-
 describe("reported issues", () => {
     let s: Scenario;
     afterEach(async () => { await s?.destroy(); });
 
     describe("folder deletes (ftp-deploy#43 #45 #50 #207 #220, Action#279 #280 #289 #453 #517)", () => {
-        // BUG: HashDiff drops delete entries that start with a deleted folder's name, "folder/sub" also swallows "folder/sub-two"
-        test.failing("#50 folder/sub and folder/sub-two are both removed", async () => {
+        // Regression (was a bug): HashDiff drops delete entries that start with a deleted folder's name, "folder/sub" also swallows "folder/sub-two"
+        test("#50 folder/sub and folder/sub-two are both removed", async () => {
             s = await Scenario.create();
             s.setLocal({ folder: { sub: { "a.txt": "a" }, "sub-two": { "b.txt": "b" }, "keep.txt": "k" } });
             (await s.deploy()).expectOk();
@@ -171,9 +163,9 @@ describe("reported issues", () => {
     });
 
     describe("case sensitivity (Action#263)", () => {
-        // BUG: the new name is uploaded first and then the old name is deleted; on a case-insensitive server that deletes the new file
+        // Regression (was a bug): the new name is uploaded first and then the old name is deleted; on a case-insensitive server that deletes the new file
         // while the state file still lists it
-        failingOnCaseInsensitiveFs("#263 case-only file rename is propagated", async () => {
+        test("#263 case-only file rename is propagated", async () => {
             s = await Scenario.create();
             s.setLocal({ "Readme.md": "r" });
             (await s.deploy()).expectOk();
@@ -182,7 +174,7 @@ describe("reported issues", () => {
             expect(fs.readdirSync(s.remoteSiteDir).filter(n => !n.startsWith(".ftp"))).toEqual(["README.md"]);
         });
 
-        failingOnCaseInsensitiveFs("#263 case-only folder rename is propagated", async () => {
+        test("#263 case-only folder rename is propagated", async () => {
             s = await Scenario.create();
             s.setLocal({ Images: { "a.png": "a" } });
             (await s.deploy()).expectOk();
@@ -238,8 +230,8 @@ describe("reported issues", () => {
             expect((await s.deploy()).ok).toBe(false);
         });
 
-        // BUG: the local state is written to local-dir/state-name, overwriting a user's file of that name
-        test.failing("a content file with the same name as the state file is not overwritten locally", async () => {
+        // Regression (was a bug): the local state is written to local-dir/state-name, overwriting a user's file of that name
+        test("a content file with the same name as the state file is not overwritten locally", async () => {
             s = await Scenario.create();
             s.setLocal({ "a.txt": "a", "meta.json": "user content" });
             (await s.deploy({ "state-name": "meta.json" })).expectOk();

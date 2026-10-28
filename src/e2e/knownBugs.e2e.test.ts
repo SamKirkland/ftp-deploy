@@ -1,8 +1,6 @@
 /**
- * Reproductions of suspected library bugs found by reading the code.
- *
- * Each uses `test.failing`: the test body asserts the CORRECT behaviour, jest reports it as passing while the bug exists
- * and as failing once it is fixed. When that happens just change `test.failing` to `test`.
+ * Regression tests for library bugs found by reading the code. All of them have been fixed;
+ * each test asserts the CORRECT behaviour. A newly found bug can be pinned with `test.failing` until it is fixed.
  */
 import { Scenario } from "./harness/scenario";
 import { HashDiff } from "../HashDiff";
@@ -15,12 +13,12 @@ const file = (name: string, hash = "h"): FileRecord => ({ type: "file", name, si
 const folder = (name: string): FileRecord => ({ type: "folder", name } as FileRecord);
 
 describe("HashDiff unit-level bugs", () => {
-    test.failing("deleting folder 'a' must not swallow the delete of sibling file 'ab.txt'", () => {
+    test("deleting folder 'a' must not swallow the delete of sibling file 'ab.txt'", () => {
         const diff = new HashDiff().getDiffs(list(), list(folder("a"), file("a/x.txt"), file("ab.txt")));
         expect(diff.delete.map(d => d.name).sort()).toEqual(["a", "ab.txt"]);
     });
 
-    test.failing("file replaced by a folder of the same name is handled (old file deleted, folder created)", () => {
+    test("file replaced by a folder of the same name is handled (old file deleted, folder created)", () => {
         const diff = new HashDiff().getDiffs(list(folder("x"), file("x/y.txt")), list(file("x")));
         expect(diff.delete.map(d => d.name)).toContain("x");
         expect(diff.upload.map(d => d.name)).toEqual(expect.arrayContaining(["x", "x/y.txt"]));
@@ -31,7 +29,7 @@ describe("end-to-end bugs", () => {
     let s: Scenario;
     afterEach(async () => { await s.destroy(); });
 
-    test.failing("folder 'a' deleted locally while sibling 'ab.txt' also deleted => both gone from the server", async () => {
+    test("folder 'a' deleted locally while sibling 'ab.txt' also deleted => both gone from the server", async () => {
         s = await Scenario.create();
         s.setLocal({ a: { "x.txt": "x" }, "ab.txt": "ab", keep: "k" });
         (await s.deploy()).expectOk();
@@ -42,7 +40,7 @@ describe("end-to-end bugs", () => {
         s.expectRemoteInSync();
     });
 
-    test.failing("file turned into folder with the same name", async () => {
+    test("file turned into folder with the same name", async () => {
         s = await Scenario.create();
         s.setLocal({ thing: "i am a file" });
         (await s.deploy()).expectOk();
@@ -53,7 +51,7 @@ describe("end-to-end bugs", () => {
         s.expectRemoteInSync();
     });
 
-    test.failing("folder turned into file with the same name", async () => {
+    test("folder turned into file with the same name", async () => {
         s = await Scenario.create();
         s.setLocal({ thing: { "inner.txt": "folder" } });
         (await s.deploy()).expectOk();
@@ -64,7 +62,7 @@ describe("end-to-end bugs", () => {
         s.expectRemoteInSync();
     });
 
-    test.failing("server-dir used with a login home that is not the ftp root: deleted folders are really removed", async () => {
+    test("server-dir used with a login home that is not the ftp root: deleted folders are really removed", async () => {
         s = await Scenario.create({ server: { home: "/home/user" }, remoteDir: "home/user/www" });
         const fs = await import("fs");
         const path = await import("path");
