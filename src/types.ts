@@ -49,7 +49,7 @@ export interface IFtpDeployArguments {
 
     /**
      * How much information should print. minimal=only important info, standard=important info and basic file changes, verbose=print everything the script is doing
-     * @default "info"
+     * @default "standard"
      */
     "log-level"?: "minimal" | "standard" | "verbose";
 
